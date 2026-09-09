@@ -5,7 +5,8 @@ import { IMD_AWS_STATIONS, getStationProfile, IMDStationProfile } from '@/lib/st
 import { 
   nicWmoEngineInstance, 
   TelemetryPacket, 
-  WorkOrderTicket 
+  WorkOrderTicket,
+  getInitialSeededDataset
 } from '@/lib/anomalyLogic';
 
 import { GovHeader } from '@/components/GovHeader';
@@ -13,42 +14,22 @@ import { GovNetworkStrip } from '@/components/GovNetworkStrip';
 import { GovObservationConsole } from '@/components/GovObservationConsole';
 import { GovAnomalyRegister } from '@/components/GovAnomalyRegister';
 import { GovTechnicianDrawer } from '@/components/GovTechnicianDrawer';
+import { GovInfoModals, ActiveModalType } from '@/components/GovInfoModals';
 
 export default function GovernmentAWSManagementPortal() {
   const [selectedStationId, setSelectedStationId] = useState<string>('AWS-DEL-04');
-  const [fontSizeLevel, setFontSizeLevel] = useState<number>(0); // -1, 0, 1
+  const [fontSizeLevel, setFontSizeLevel] = useState<number>(0); // -1, 0, 1, 2
   const [isHighContrast, setIsHighContrast] = useState<boolean>(false);
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
+  const [activeModal, setActiveModal] = useState<ActiveModalType>(null);
 
-  const [stationPackets, setStationPackets] = useState<Record<string, TelemetryPacket[]>>({});
-  const [latestPackets, setLatestPackets] = useState<Record<string, TelemetryPacket>>({});
-  const [workOrders, setWorkOrders] = useState<WorkOrderTicket[]>([]);
+  // Pre-seed synchronous initial data with active anomalies for demo resilience
+  const [initialData] = useState(() => getInitialSeededDataset());
+  const [stationPackets, setStationPackets] = useState<Record<string, TelemetryPacket[]>>(() => initialData.stationPackets);
+  const [latestPackets, setLatestPackets] = useState<Record<string, TelemetryPacket>>(() => initialData.latestPackets);
+  const [workOrders, setWorkOrders] = useState<WorkOrderTicket[]>(() => initialData.workOrders);
   const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [tickCount, setTickCount] = useState<number>(0);
-
-  // Initial Seed Load (Historical Context)
-  useEffect(() => {
-    const initialPackets: Record<string, TelemetryPacket[]> = {};
-    const initialLatest: Record<string, TelemetryPacket> = {};
-    const initialWorkOrders: WorkOrderTicket[] = [];
-
-    const now = Date.now() - 20 * 2500;
-    for (const station of IMD_AWS_STATIONS) {
-      const history: TelemetryPacket[] = [];
-      for (let i = 0; i < 16; i++) {
-        const ts = now + i * 2500;
-        const pkt = nicWmoEngineInstance.generatePacket(station.stationId, ts, i);
-        history.push(pkt);
-      }
-      initialPackets[station.stationId] = history;
-      if (history.length > 0) {
-        initialLatest[station.stationId] = history[history.length - 1];
-      }
-    }
-
-    setStationPackets(initialPackets);
-    setLatestPackets(initialLatest);
-  }, []);
+  const [tickCount, setTickCount] = useState<number>(14);
 
   // Periodic Telemetry Ingest Loop (every 2.5 seconds)
   const processNextObservationTick = useCallback(() => {
@@ -61,6 +42,9 @@ export default function GovernmentAWSManagementPortal() {
       const newBuffers: Record<string, TelemetryPacket[]> = { ...prevBuffers };
 
       for (const station of IMD_AWS_STATIONS) {
+        // Skip updating AWS-VAP-20 if in scheduled calibration
+        if (station.status === 'SCHEDULED_CALIBRATION') continue;
+
         const pkt = nicWmoEngineInstance.generatePacket(station.stationId, now, tickCount);
         updatedLatest[station.stationId] = pkt;
 
@@ -108,11 +92,20 @@ export default function GovernmentAWSManagementPortal() {
     return () => clearInterval(timer);
   }, [isPaused, processNextObservationTick]);
 
-  // Accessibility handlers
+  // Accessibility handlers with real HTML root font scaling
   const handleFontSizeChange = (delta: number) => {
-    if (delta === 0) setFontSizeLevel(0);
-    else if (delta === -1 && fontSizeLevel > -1) setFontSizeLevel((prev) => prev - 1);
-    else if (delta === 1 && fontSizeLevel < 2) setFontSizeLevel((prev) => prev + 1);
+    let nextLevel = fontSizeLevel;
+    if (delta === 0) nextLevel = 0;
+    else if (delta === -1 && fontSizeLevel > -1) nextLevel = fontSizeLevel - 1;
+    else if (delta === 1 && fontSizeLevel < 2) nextLevel = fontSizeLevel + 1;
+    setFontSizeLevel(nextLevel);
+
+    if (typeof document !== 'undefined') {
+      if (nextLevel === -1) document.documentElement.style.fontSize = '14px';
+      else if (nextLevel === 1) document.documentElement.style.fontSize = '18px';
+      else if (nextLevel === 2) document.documentElement.style.fontSize = '20px';
+      else document.documentElement.style.fontSize = '16px';
+    }
   };
 
   const handleToggleContrast = () => {
@@ -128,27 +121,25 @@ export default function GovernmentAWSManagementPortal() {
     setLanguage((prev) => (prev === 'en' ? 'hi' : 'en'));
   };
 
-  // Font size multiplier class
-  const getFontSizeClass = () => {
-    if (fontSizeLevel === -1) return 'text-[92%]';
-    if (fontSizeLevel === 1) return 'text-[106%]';
-    if (fontSizeLevel === 2) return 'text-[112%]';
-    return '';
-  };
-
   // Network metrics calculations
   const totalCount = IMD_AWS_STATIONS.length;
+  const operationalTotal = IMD_AWS_STATIONS.filter((s) => s.status !== 'SCHEDULED_CALIBRATION').length;
   const latestList = Object.values(latestPackets);
   const criticalCount = latestList.filter((p) => p.alertLevel === 'LEVEL_4_RED').length;
   const stormCount = latestList.filter((p) => p.classification === 'GENUINE_CONVECTIVE_EVENT').length;
   const driftCount = latestList.filter((p) => p.classification === 'CALIBRATION_DRIFT').length;
 
+  // Mathematically consistent Quality Index based on active faults
+  const calculatedQIndex = operationalTotal > 0
+    ? Math.max(75, Math.min(100, Math.round(((operationalTotal - criticalCount) / operationalTotal) * 1000) / 10))
+    : 95.0;
+
   const activeSelectedStation = getStationProfile(selectedStationId);
   const activeStationHistory = stationPackets[selectedStationId] || [];
 
   return (
-    <div className={`min-h-screen bg-[#F1F5F9] text-slate-900 flex flex-col font-sans ${getFontSizeClass()}`}>
-      {/* 1. Official Government Header (NIC Guidelines) */}
+    <div className="min-h-screen bg-[#F1F5F9] text-slate-900 flex flex-col font-sans transition-all duration-150">
+      {/* 1. Official Header with Hackathon Prototype Identity */}
       <GovHeader
         fontSizeLevel={fontSizeLevel}
         onFontSizeChange={handleFontSizeChange}
@@ -156,13 +147,14 @@ export default function GovernmentAWSManagementPortal() {
         onToggleContrast={handleToggleContrast}
         language={language}
         onToggleLanguage={handleToggleLanguage}
+        onOpenModal={(type) => setActiveModal(type)}
       />
 
       {/* 2. Executive Network Status Strip & Breadcrumb */}
       <GovNetworkStrip
         totalStations={totalCount}
-        onlineStations={totalCount - 1} // 19 online, 1 in scheduled calibration
-        qualityIndex={98.4}
+        onlineStations={operationalTotal} // 19 online, 1 in scheduled calibration (AWS-VAP-20)
+        qualityIndex={calculatedQIndex}
         ingestInterval="2.5s"
         anomalyTally={{
           critical: criticalCount,
@@ -186,10 +178,11 @@ export default function GovernmentAWSManagementPortal() {
         <GovAnomalyRegister
           workOrders={workOrders}
           language={language}
+          onOpenMethodology={() => setActiveModal('methodology')}
         />
       </main>
 
-      {/* Section 5: Stealth Field Diagnostic & Bench Test Tool (Authorized Personnel) */}
+      {/* Section 5: SIH Live Anomaly Injection & Testbench Tool */}
       <GovTechnicianDrawer
         selectedStationId={selectedStationId}
         onTriggerThermistorSpike={(id) => {
@@ -220,7 +213,14 @@ export default function GovernmentAWSManagementPortal() {
         onTogglePause={() => setIsPaused(!isPaused)}
       />
 
-      {/* Official Government of India Footer (NIC / MoES Standards) */}
+      {/* Informational Modals */}
+      <GovInfoModals
+        activeModal={activeModal}
+        onClose={() => setActiveModal(null)}
+        language={language}
+      />
+
+      {/* Honest, High-Impact SIH Hackathon Project Footer with Interactive Modals */}
       <footer className="mt-8 bg-[#002147] text-slate-300 border-t-4 border-[#FF9933] text-xs">
         <div className="max-w-[1750px] mx-auto px-4 lg:px-8 py-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pb-6 border-b border-slate-700">
@@ -242,7 +242,7 @@ export default function GovernmentAWSManagementPortal() {
               </div>
               <ul className="space-y-1 text-slate-400 text-[11px]">
                 <li>WMO Pub No. 8 Instrument Standards</li>
-                <li>NABL Calibration Accreditation</li>
+                <li>NABL Calibration Traceability</li>
                 <li>ISO 9001:2015 QC Procedures</li>
                 <li>NWP Numerical Assimilation Verification</li>
               </ul>
@@ -262,26 +262,54 @@ export default function GovernmentAWSManagementPortal() {
 
             <div>
               <div className="font-bold text-white mb-1.5 uppercase tracking-wider text-[11px]">
-                {language === 'hi' ? 'एनआईसी सहायता' : 'NIC Support & Compliance'}
+                {language === 'hi' ? 'परियोजना वास्तुकला' : 'SIH26073 Innovation Details'}
               </div>
               <p className="text-slate-400 text-[11px] leading-relaxed">
-                Designed, Developed and Hosted by National Informatics Centre (NIC), Ministry of Electronics &amp; Information Technology, Government of India.
+                Smart India Hackathon concept prototype for automated real-time quality control, explainable AI (XAI) fault isolation, and NWP data gating across India Meteorological Department (IMD) AWS networks.
               </p>
+              <div className="mt-2">
+                <button
+                  onClick={() => setActiveModal('architecture')}
+                  className="text-sky-300 hover:text-white underline text-[11px] font-semibold"
+                >
+                  {language === 'hi' ? 'पूर्ण प्रणाली वास्तुकला पढ़ें →' : 'Read Full Scalability Architecture →'}
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
             <div>
-              © 2026 India Meteorological Department (IMD), Ministry of Earth Sciences (MoES), Government of India.
+              © 2026 NAWS-QMS Project | Smart India Hackathon Prototype (SIH26073) | Built for Evaluation
             </div>
-            <div className="flex items-center gap-4">
-              <span className="hover:underline cursor-pointer">Website Policies</span>
+            <div className="flex items-center gap-4 flex-wrap">
+              <button
+                onClick={() => setActiveModal('architecture')}
+                className="hover:underline hover:text-white cursor-pointer"
+              >
+                Website Scope &amp; Architecture
+              </button>
               <span>•</span>
-              <span className="hover:underline cursor-pointer">Terms of Use</span>
+              <button
+                onClick={() => setActiveModal('methodology')}
+                className="hover:underline hover:text-white cursor-pointer"
+              >
+                WMO QC Rules &amp; XAI
+              </button>
               <span>•</span>
-              <span className="hover:underline cursor-pointer">Help &amp; Accessibility</span>
+              <button
+                onClick={() => setActiveModal('accessibility')}
+                className="hover:underline hover:text-white cursor-pointer"
+              >
+                Accessibility Statement
+              </button>
               <span>•</span>
-              <span className="font-mono text-slate-300">NIC-SEC-AUDIT-2026-PASS</span>
+              <button
+                onClick={() => setActiveModal('provenance')}
+                className="hover:underline hover:text-white cursor-pointer"
+              >
+                Data Provenance &amp; Disclosure
+              </button>
             </div>
           </div>
         </div>
@@ -289,3 +317,4 @@ export default function GovernmentAWSManagementPortal() {
     </div>
   );
 }
+

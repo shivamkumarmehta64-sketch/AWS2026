@@ -476,3 +476,137 @@ export class NICWMOAnomalyEngine {
 }
 
 export const nicWmoEngineInstance = new NICWMOAnomalyEngine();
+
+export interface SeededTelemetryDataset {
+  stationPackets: Record<string, TelemetryPacket[]>;
+  latestPackets: Record<string, TelemetryPacket>;
+  workOrders: WorkOrderTicket[];
+}
+
+export function getInitialSeededDataset(): SeededTelemetryDataset {
+  const stationPackets: Record<string, TelemetryPacket[]> = {};
+  const latestPackets: Record<string, TelemetryPacket> = {};
+  const workOrders: WorkOrderTicket[] = [];
+
+  const engine = new NICWMOAnomalyEngine();
+  const now = Date.now() - 14 * 2500;
+
+  for (const station of IMD_AWS_STATIONS) {
+    const history: TelemetryPacket[] = [];
+
+    // Trigger pre-seeded realistic anomalies for demonstration
+    if (station.stationId === 'AWS-DEL-04') {
+      // Step 9: Inject Thermistor Open-Circuit Spike
+      for (let i = 0; i < 14; i++) {
+        if (i === 9) {
+          engine.triggerThermistorSpike('AWS-DEL-04');
+        }
+        const ts = now + i * 2500;
+        const pkt = engine.generatePacket(station.stationId, ts, i);
+        history.push(pkt);
+
+        if (pkt.classification !== 'NOMINAL_OPERATION') {
+          workOrders.push({
+            ticketId: pkt.ticketId || `IMD-QMS-2026-4102`,
+            stationId: station.stationId,
+            stationName: station.name,
+            state: station.state,
+            timestamp: pkt.timeIST,
+            parameterInvolved: pkt.xaiAttribution.primaryParameter || 'Temperature (RTD)',
+            classification: pkt.classification,
+            alertLevel: pkt.alertLevel,
+            faultProbability: pkt.faultProbability,
+            xaiBreakdown: `Temp: ${pkt.xaiAttribution.tempWeight}%, Press: ${pkt.xaiAttribution.pressWeight}%, Hum: ${pkt.xaiAttribution.humWeight}%`,
+            observedVsImputed: `Obs: ${pkt.raw.temperature ?? 'NULL'}°C / ${pkt.raw.pressure ?? 'NULL'}hPa | Imp: ${pkt.imputed.temperature}°C / ${pkt.imputed.pressure}hPa`,
+            operationalAction: pkt.operationalAction,
+            status: 'QUARANTINED',
+          });
+        }
+      }
+    } else if (station.stationId === 'AWS-KOL-02') {
+      // Step 8: Genuine Convective Storm Plunge
+      for (let i = 0; i < 14; i++) {
+        if (i === 8) {
+          engine.triggerConvectiveStorm('AWS-KOL-02');
+        }
+        const ts = now + i * 2500;
+        const pkt = engine.generatePacket(station.stationId, ts, i);
+        history.push(pkt);
+
+        if (pkt.classification !== 'NOMINAL_OPERATION') {
+          workOrders.push({
+            ticketId: pkt.ticketId || `IMD-MET-2026-4101`,
+            stationId: station.stationId,
+            stationName: station.name,
+            state: station.state,
+            timestamp: pkt.timeIST,
+            parameterInvolved: pkt.xaiAttribution.primaryParameter || 'Pressure + Humidity Gradient',
+            classification: pkt.classification,
+            alertLevel: pkt.alertLevel,
+            faultProbability: pkt.faultProbability,
+            xaiBreakdown: `Press: ${pkt.xaiAttribution.pressWeight}%, Hum: ${pkt.xaiAttribution.humWeight}%, Temp: ${pkt.xaiAttribution.tempWeight}%`,
+            observedVsImputed: `Obs: ${pkt.raw.temperature ?? 'NULL'}°C / ${pkt.raw.pressure ?? 'NULL'}hPa | Imp: ${pkt.imputed.temperature}°C / ${pkt.imputed.pressure}hPa`,
+            operationalAction: pkt.operationalAction,
+            status: 'VALIDATED_NWP',
+          });
+        }
+      }
+    } else if (station.stationId === 'AWS-PUN-08') {
+      // Step 7: Barometer Calibration Drift
+      for (let i = 0; i < 14; i++) {
+        if (i === 7) {
+          engine.triggerBarometerDrift('AWS-PUN-08');
+        }
+        const ts = now + i * 2500;
+        const pkt = engine.generatePacket(station.stationId, ts, i);
+        history.push(pkt);
+
+        if (pkt.classification !== 'NOMINAL_OPERATION') {
+          workOrders.push({
+            ticketId: pkt.ticketId || `IMD-QMS-2026-4100`,
+            stationId: station.stationId,
+            stationName: station.name,
+            state: station.state,
+            timestamp: pkt.timeIST,
+            parameterInvolved: pkt.xaiAttribution.primaryParameter || 'Barometric Transducer',
+            classification: pkt.classification,
+            alertLevel: pkt.alertLevel,
+            faultProbability: pkt.faultProbability,
+            xaiBreakdown: `Press: ${pkt.xaiAttribution.pressWeight}%, Temp: ${pkt.xaiAttribution.tempWeight}%, Hum: ${pkt.xaiAttribution.humWeight}%`,
+            observedVsImputed: `Obs: ${pkt.raw.pressure ?? 'NULL'}hPa | Imp: ${pkt.imputed.pressure}hPa`,
+            operationalAction: pkt.operationalAction,
+            status: 'UNDER_REVIEW',
+          });
+        }
+      }
+    } else {
+      // Nominal baseline readings
+      for (let i = 0; i < 14; i++) {
+        const ts = now + i * 2500;
+        const pkt = engine.generatePacket(station.stationId, ts, i);
+        history.push(pkt);
+      }
+    }
+
+    stationPackets[station.stationId] = history;
+    if (history.length > 0) {
+      latestPackets[station.stationId] = history[history.length - 1];
+    }
+  }
+
+  // Deduplicate work orders by ticketId
+  const uniqueWorkOrders: WorkOrderTicket[] = [];
+  const seen = new Set<string>();
+  for (const wo of workOrders) {
+    if (!seen.has(wo.ticketId)) {
+      seen.add(wo.ticketId);
+      uniqueWorkOrders.push(wo);
+    }
+  }
+
+  return {
+    stationPackets,
+    latestPackets,
+    workOrders: uniqueWorkOrders,
+  };
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { WorkOrderTicket } from '@/lib/anomalyLogic';
 import { 
   ClipboardList, 
@@ -10,26 +10,31 @@ import {
   Wrench, 
   CloudLightning,
   Sparkles,
-  FileSpreadsheet
+  FileSpreadsheet,
+  BookOpen,
+  Check
 } from 'lucide-react';
 
 interface GovAnomalyRegisterProps {
   workOrders: WorkOrderTicket[];
   language: 'hi' | 'en';
+  onOpenMethodology?: () => void;
 }
 
 export const GovAnomalyRegister: React.FC<GovAnomalyRegisterProps> = ({
   workOrders,
   language,
+  onOpenMethodology,
 }) => {
+  const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
+
   const handleExportCSV = () => {
     const timestamp = new Date().toISOString();
     let csv = `========================================================================================\n`;
-    csv += `GOVERNMENT OF INDIA | MINISTRY OF EARTH SCIENCES (MoES)\n`;
-    csv += `INDIA METEOROLOGICAL DEPARTMENT (IMD) - QUALITY MANAGEMENT DIVISION\n`;
-    csv += `NATIONAL AUTOMATIC WEATHER STATION NETWORK (NAWS-QMS v4.2.8)\n`;
-    csv += `OFFICIAL AUDIT REPORT & ANOMALY WORK-ORDER REGISTER\n`;
-    csv += `EXTRACTED AT: ${timestamp} IST | CLASSIFICATION: OFFICIAL USE ONLY\n`;
+    csv += `SMART INDIA HACKATHON (SIH) | PROBLEM STATEMENT: SIH26073\n`;
+    csv += `NATIONAL AUTOMATIC WEATHER STATION QUALITY MANAGEMENT SYSTEM (NAWS-QMS)\n`;
+    csv += `ANOMALY DETECTION, XAI ATTRIBUTION & FIELD WORK-ORDER REGISTER (PROTOTYPE DEMO)\n`;
+    csv += `EXTRACTED AT: ${timestamp} IST | EVALUATION RUN\n`;
     csv += `========================================================================================\n\n`;
     csv += `Ticket ID,Station Code,Observatory Name,State,Timestamp (IST),Parameter Involved,Classification,Alert Level,Fault Probability,XAI Contribution Breakdown,Observed vs Imputed,Action Taken,Work-Order Status\n`;
 
@@ -41,10 +46,13 @@ export const GovAnomalyRegister: React.FC<GovAnomalyRegisterProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `IMD_AWS_QMS_Audit_Report_${Date.now()}.csv`);
+    link.setAttribute('download', `SIH26073_NAWS_QMS_Audit_Report_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    setDownloadNotice(`Generated and downloaded official audit CSV with ${workOrders.length} incident records.`);
+    setTimeout(() => setDownloadNotice(null), 4500);
   };
 
   return (
@@ -69,16 +77,37 @@ export const GovAnomalyRegister: React.FC<GovAnomalyRegisterProps> = ({
           </div>
         </div>
 
-        {/* Download Official Audit Report Button */}
-        <button
-          onClick={handleExportCSV}
-          disabled={workOrders.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#002147] hover:bg-[#0B3B60] text-white text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
-        >
-          <FileSpreadsheet className="w-3.5 h-3.5" />
-          <span>{language === 'hi' ? 'आधिकारिक ऑडिट रिपोर्ट डाउनलोड करें (.csv)' : 'Download Official Audit Report (CSV)'}</span>
-        </button>
+        {/* Actions Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {onOpenMethodology && (
+            <button
+              onClick={onOpenMethodology}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold transition-colors"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+              <span>{language === 'hi' ? 'डब्ल्यूएमओ नियम देखें' : 'View WMO QC Rules & XAI'}</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleExportCSV}
+            disabled={workOrders.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#002147] hover:bg-[#0B3B60] text-white text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>{language === 'hi' ? 'ऑडिट लॉग डाउनलोड (.csv)' : 'Download Audit Report (CSV)'}</span>
+          </button>
+        </div>
       </div>
+
+      {/* Download Feedback Banner */}
+      {downloadNotice && (
+        <div className="p-2 bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs rounded flex items-center gap-1.5 font-medium animate-fadeIn">
+          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{downloadNotice}</span>
+        </div>
+      )}
+
 
       {/* Formal Government Work-Order Table */}
       <div className="overflow-x-auto border border-slate-300 rounded">

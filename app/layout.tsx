@@ -2,19 +2,19 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'NAWS-QMS v4.2.8 | National Automatic Weather Station Quality Management System | MoES & IMD',
+  title: 'NAWS-QMS | Smart AWS Telemetry & Anomaly Detection (SIH26073 Prototype)',
   description:
-    'Official Real-Time Quality Control, Anomaly Discrimination and Surveillance Portal for Automatic Weather Stations (AWS). Developed under the aegis of the Ministry of Earth Sciences (MoES) and India Meteorological Department (IMD) by National Informatics Centre (NIC).',
+    'National Automatic Weather Station Quality Management System (NAWS-QMS) — An innovation prototype developed for Smart India Hackathon (SIH26073). Demonstrates automated sensor fault discrimination, WMO Pub No. 8 validation, and Explainable AI root-cause isolation using simulated telemetry.',
   keywords: [
-    'MoES',
-    'IMD',
-    'NAWS-QMS',
-    'Automatic Weather Station',
-    'National Informatics Centre',
-    'NIC',
-    'WMO Pub No. 8',
-    'Meteorological Quality Control',
+    'Smart India Hackathon',
     'SIH26073',
+    'Automatic Weather Station',
+    'AWS Telemetry',
+    'WMO Pub No. 8',
+    'Sensor Anomaly Detection',
+    'Explainable AI',
+    'XAI',
+    'Meteorological Quality Control',
   ],
 };
 

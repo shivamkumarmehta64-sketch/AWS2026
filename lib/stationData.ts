@@ -23,6 +23,7 @@ export interface IMDStationProfile {
     pressureMean: number;
     humidityMean: number;
   };
+  status?: 'OPERATIONAL' | 'SCHEDULED_CALIBRATION';
 }
 
 export const IMD_AWS_STATIONS: IMDStationProfile[] = [
@@ -465,6 +466,7 @@ export const IMD_AWS_STATIONS: IMDStationProfile[] = [
       calibCertNo: 'CC-IMD-NABL-VAP-2025-0862',
     },
     baseline: { tempMean: 30.2, pressureMean: 1012.0, humidityMean: 80.0 },
+    status: 'SCHEDULED_CALIBRATION',
   },
 ];
 
