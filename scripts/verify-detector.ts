@@ -1,4 +1,4 @@
-import { NICWMOAnomalyEngine } from '../lib/anomalyLogic';
+import { NICWMOAnomalyEngine, TelemetryPacket } from '../lib/anomalyLogic';
 
 function runNICWMOTests() {
   console.log('================================================================');
@@ -26,7 +26,7 @@ function runNICWMOTests() {
 
   // 1. Nominal Operation Check (WMO Flag 1 - Good Data)
   console.log('--- Test 1: Nominal Diurnal Operation (WMO Flag 1) ---');
-  let lastNominal: any;
+  let lastNominal!: TelemetryPacket;
   for (let i = 0; i < 20; i++) {
     now += 2500;
     lastNominal = engine.generatePacket(stationId, now, i);
@@ -57,7 +57,7 @@ function runNICWMOTests() {
   // 3. Signal Wire Disconnect / Frozen ADC Loop
   console.log('\n--- Test 3: Signal Wire Disconnect / Frozen ADC Sensor Test ---');
   engine.triggerWireDisconnectFreeze(stationId);
-  let frozenPkt: any;
+  let frozenPkt!: TelemetryPacket;
   for (let i = 0; i < 7; i++) {
     now += 2500;
     frozenPkt = engine.generatePacket(stationId, now, 31 + i);
@@ -76,7 +76,7 @@ function runNICWMOTests() {
   // 4. Barometer Calibration Drift
   console.log('\n--- Test 4: Barometer Calibration Drift Test (-0.4 hPa/hr) ---');
   engine.triggerBarometerDrift(stationId);
-  let driftPkt: any;
+  let driftPkt!: TelemetryPacket;
   for (let i = 0; i < 8; i++) {
     now += 2500;
     driftPkt = engine.generatePacket(stationId, now, 46 + i);
@@ -96,7 +96,7 @@ function runNICWMOTests() {
   // 5. Severe Convective Storm vs. Probe Malfunction Discrimination
   console.log('\n--- Test 5: Severe Convective Storm Discrimination (Valid Severe Weather) ---');
   engine.triggerConvectiveStorm(stationId);
-  let stormPkt: any;
+  let stormPkt!: TelemetryPacket;
   for (let i = 0; i < 4; i++) {
     now += 2500;
     stormPkt = engine.generatePacket(stationId, now, 61 + i);
