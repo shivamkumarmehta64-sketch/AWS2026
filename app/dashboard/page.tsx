@@ -41,6 +41,7 @@ export default function GovernmentAWSManagementPortal() {
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
   const [activeModal, setActiveModal] = useState<ActiveModalType>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'analytics' | 'diagnostics' | 'simulator'>('map');
+  const [mobileSubView, setMobileSubView] = useState<'map' | 'telemetry'>('map');
   const [isDatasetReplayOpen, setIsDatasetReplayOpen] = useState(false);
   const [isMobileQROpen, setIsMobileQROpen] = useState(false);
 
@@ -309,98 +310,98 @@ export default function GovernmentAWSManagementPortal() {
       />
 
       {/* Executive Command Workspace KPI Metric Ribbon */}
-      <section className="max-w-[1750px] w-full mx-auto px-4 lg:px-8 pt-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <section className="max-w-[1750px] w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
           {/* Card 1: Total Observatories */}
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 hover:border-sky-500/40 rounded-xl p-4 transition-all duration-300 shadow-lg relative overflow-hidden group">
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 hover:border-sky-500/40 rounded-xl p-3 sm:p-4 transition-all duration-300 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/10 rounded-full blur-xl group-hover:bg-sky-500/20 transition-all" />
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">All-India Grid Network</span>
-              <span className="text-xs bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Grid Network</span>
+              <span className="text-[9px] sm:text-xs bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 sm:px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
-                766 Districts
+                766
               </span>
             </div>
             <div className="flex items-baseline justify-between">
-              <div className="text-3xl font-black font-mono tracking-tight text-white">
+              <div className="text-xl sm:text-3xl font-black font-mono tracking-tight text-white">
                 {opTotal + Object.keys(customStations).length}
-                <span className="text-xs font-normal text-slate-400 ml-1.5">Nodes Active</span>
+                <span className="text-[10px] sm:text-xs font-normal text-slate-400 ml-1">Nodes</span>
               </div>
               {connectedMobileCount > 0 && (
-                <span className="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-700/60 px-1.5 py-0.5 rounded font-bold">
-                  +{connectedMobileCount} Mobile
+                <span className="text-[9px] bg-cyan-950 text-cyan-300 border border-cyan-700/60 px-1.5 py-0.5 rounded font-bold">
+                  +{connectedMobileCount}
                 </span>
               )}
             </div>
-            <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2">
-              <span>Coverage: 100% WMO Grid</span>
+            <div className="mt-2 text-[9px] sm:text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5 sm:pt-2">
+              <span>Coverage: 100%</span>
               <span className="text-emerald-400 font-bold font-mono">TDMA Gen-3</span>
             </div>
           </div>
 
           {/* Card 2: WMO Quality Index */}
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 hover:border-emerald-500/40 rounded-xl p-4 transition-all duration-300 shadow-lg relative overflow-hidden group">
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 hover:border-emerald-500/40 rounded-xl p-3 sm:p-4 transition-all duration-300 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all" />
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">WMO QC Integrity Index</span>
-              <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">QC Integrity</span>
+              <span className="text-[9px] sm:text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 sm:px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
                 WMO Pub 8
               </span>
             </div>
             <div className="flex items-baseline justify-between">
-              <div className="text-3xl font-black font-mono tracking-tight text-emerald-400">
+              <div className="text-xl sm:text-3xl font-black font-mono tracking-tight text-emerald-400">
                 {qIndex}%
               </div>
-              <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1.5 py-0.5 rounded font-bold">
-                Approved for NWP
+              <span className="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1.5 py-0.5 rounded font-bold">
+                NWP Pass
               </span>
             </div>
-            <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2">
-              <span>Quality Flags 1 & 2</span>
-              <span className="text-emerald-400 font-bold font-mono">Zero Noise Rate</span>
+            <div className="mt-2 text-[9px] sm:text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5 sm:pt-2">
+              <span>Flags 1 &amp; 2</span>
+              <span className="text-emerald-400 font-bold font-mono">Clean Feed</span>
             </div>
           </div>
 
           {/* Card 3: Telemetry Cadence */}
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 hover:border-amber-500/40 rounded-xl p-4 transition-all duration-300 shadow-lg relative overflow-hidden group">
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 hover:border-amber-500/40 rounded-xl p-3 sm:p-4 transition-all duration-300 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all" />
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Telemetry Performance</span>
-              <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Telemetry Sync</span>
+              <span className="text-[9px] sm:text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 sm:px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                2.5s Sync
+                2.5s
               </span>
             </div>
             <div className="flex items-baseline justify-between">
-              <div className="text-3xl font-black font-mono tracking-tight text-amber-300">
+              <div className="text-xl sm:text-3xl font-black font-mono tracking-tight text-amber-300">
                 &lt; 5 ms
               </div>
-              <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.5 rounded font-bold">
-                Ultra-Low Latency
+              <span className="text-[9px] bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.5 rounded font-bold">
+                Line-Rate
               </span>
             </div>
-            <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2">
-              <span>Ingestion Stream: Real-Time</span>
-              <span className="text-amber-400 font-bold font-mono">XAI Attributed</span>
+            <div className="mt-2 text-[9px] sm:text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5 sm:pt-2">
+              <span>Edge Stream</span>
+              <span className="text-amber-400 font-bold font-mono">XAI Blame</span>
             </div>
           </div>
 
           {/* Card 4: Active Anomaly & Storm Warnings */}
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 hover:border-purple-500/40 rounded-xl p-4 transition-all duration-300 shadow-lg relative overflow-hidden group">
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 hover:border-purple-500/40 rounded-xl p-3 sm:p-4 transition-all duration-300 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all" />
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Anomaly Discrimination</span>
-              <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-mono font-bold">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Discrimination</span>
+              <span className="text-[9px] sm:text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 sm:px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
                 AI Filter
               </span>
             </div>
             <div className="flex items-baseline justify-between">
-              <div className="text-3xl font-black font-mono tracking-tight text-purple-300">
-                {stormCount} <span className="text-xs font-normal text-slate-400">Storms</span> / {critCount} <span className="text-xs font-normal text-slate-400">Faults</span>
+              <div className="text-lg sm:text-3xl font-black font-mono tracking-tight text-purple-300">
+                {stormCount} <span className="text-[10px] sm:text-xs font-normal text-slate-400">Storm</span> / {critCount} <span className="text-[10px] sm:text-xs font-normal text-slate-400">Fault</span>
               </div>
             </div>
-            <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2">
-              <span>Convective Storms vs Hardware Glitches</span>
+            <div className="mt-2 text-[9px] sm:text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5 sm:pt-2">
+              <span>Severe Weather Fronts</span>
               <span className="text-purple-400 font-bold font-mono">Isolated</span>
             </div>
           </div>
@@ -408,23 +409,23 @@ export default function GovernmentAWSManagementPortal() {
       </section>
 
       {/* Navigation Tab Bar with Neon Active Pill */}
-      <div className="sticky top-[64px] z-40 bg-slate-950/80 backdrop-blur-xl border-y border-slate-800/80 shadow-md">
-        <div className="max-w-[1750px] mx-auto px-4 lg:px-8 flex items-center justify-between overflow-x-auto hide-scrollbar">
-          <div className="flex items-center space-x-1 py-1.5">
+      <div className="sticky top-[64px] z-40 bg-slate-950/90 backdrop-blur-xl border-y border-slate-800/80 shadow-md">
+        <div className="max-w-[1750px] mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between overflow-x-auto scrollbar-none">
+          <div className="flex items-center space-x-1.5 py-1.5 shrink-0">
             {(['map', 'analytics', 'diagnostics', 'simulator'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2.5 rounded-lg text-xs font-extrabold tracking-wide transition-all duration-200 cursor-pointer flex items-center gap-2 ${
+                className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs font-extrabold tracking-wide transition-all duration-200 cursor-pointer flex items-center gap-1.5 sm:gap-2 shrink-0 ${
                   activeTab === tab
                     ? 'bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 text-white shadow-lg shadow-sky-500/25 ring-1 ring-sky-300/40'
                     : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900/60'
                 }`}
               >
-                {tab === 'map' && <><span>📍</span> <span>National GIS Command Map</span></>}
-                {tab === 'analytics' && <><span>📊</span> <span>All-India 766 District Grid</span></>}
-                {tab === 'diagnostics' && <><span>🔍</span> <span>Predictive Maintenance & DSS</span></>}
-                {tab === 'simulator' && <><span>⚙️</span> <span>Fault Injection Simulator</span></>}
+                {tab === 'map' && <><span>📍</span> <span><span className="hidden sm:inline">National </span>GIS Map</span></>}
+                {tab === 'analytics' && <><span>📊</span> <span>766 District<span className="hidden sm:inline"> Grid</span></span></>}
+                {tab === 'diagnostics' && <><span>🔍</span> <span>Maintenance<span className="hidden sm:inline"> &amp; DSS</span></span></>}
+                {tab === 'simulator' && <><span>⚙️</span> <span>Fault Simulator</span></>}
               </button>
             ))}
           </div>
@@ -472,25 +473,55 @@ export default function GovernmentAWSManagementPortal() {
 
         {/* Tab 1: GIS Map & Telemetry Console */}
         {activeTab === 'map' && (
-          <div className="grid grid-cols-1 xl:grid-cols-[540px_1fr] gap-5 items-start">
-            <div className="bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-xl p-2 shadow-2xl overflow-hidden">
-              <GovNetworkMap
-                latestPackets={latestPackets}
-                selectedStationId={selectedStationId}
-                onSelectStation={setSelectedStationId}
-                onSelectCustomDistrict={handleSelectCustomProfile}
-                customStations={customStations}
-                language={language}
-              />
+          <div className="space-y-3">
+            {/* Mobile & Tablet Segmented View Switcher */}
+            <div className="xl:hidden flex items-center justify-center p-1 bg-slate-900/90 backdrop-blur-md rounded-xl border border-slate-800 shadow-md">
+              <button
+                onClick={() => setMobileSubView('map')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  mobileSubView === 'map'
+                    ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>🗺️ GIS Map View</span>
+              </button>
+              <button
+                onClick={() => setMobileSubView('telemetry')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  mobileSubView === 'telemetry'
+                    ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>📊 Live Telemetry Console</span>
+              </button>
             </div>
-            <div className="bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-xl p-2 shadow-2xl">
-              <GovObservationConsole
-                selectedStation={activeStation} onSelectStation={setSelectedStationId}
-                packets={activeHistory} language={language}
-                isLiveApiMode={isLiveApiMode} onToggleLiveApiMode={() => setIsLiveApiMode(p => !p)}
-                liveStatusInfo={liveObservation} isSyncingLive={isSyncingLive}
-                onManualSync={() => syncLiveWeather(selectedStationId)}
-              />
+
+            <div className="grid grid-cols-1 xl:grid-cols-[540px_1fr] gap-5 items-start">
+              <div className={`bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-xl p-2 shadow-2xl overflow-hidden ${
+                mobileSubView === 'telemetry' ? 'hidden xl:block' : 'block'
+              }`}>
+                <GovNetworkMap
+                  latestPackets={latestPackets}
+                  selectedStationId={selectedStationId}
+                  onSelectStation={setSelectedStationId}
+                  onSelectCustomDistrict={handleSelectCustomProfile}
+                  customStations={customStations}
+                  language={language}
+                />
+              </div>
+              <div className={`bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-xl p-2 shadow-2xl ${
+                mobileSubView === 'map' ? 'hidden xl:block' : 'block'
+              }`}>
+                <GovObservationConsole
+                  selectedStation={activeStation} onSelectStation={setSelectedStationId}
+                  packets={activeHistory} language={language}
+                  isLiveApiMode={isLiveApiMode} onToggleLiveApiMode={() => setIsLiveApiMode(p => !p)}
+                  liveStatusInfo={liveObservation} isSyncingLive={isSyncingLive}
+                  onManualSync={() => syncLiveWeather(selectedStationId)}
+                />
+              </div>
             </div>
           </div>
         )}

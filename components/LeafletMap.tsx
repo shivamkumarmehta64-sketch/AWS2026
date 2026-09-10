@@ -50,7 +50,7 @@ export default function LeafletMap({ nodes, activeNode, onNodeClick, activeLayer
     <MapContainer
       center={[22.0, 79.0]} // Center of India
       zoom={4}
-      style={{ height: '100%', width: '100%', minHeight: '580px', zIndex: 0 }}
+      style={{ height: '100%', width: '100%', minHeight: '440px', zIndex: 0 }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'

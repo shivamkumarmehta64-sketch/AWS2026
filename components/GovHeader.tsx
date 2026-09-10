@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Clock, Globe, Eye, BookOpen, Layers, Server, FileText, Smartphone, Sparkles } from 'lucide-react';
+import { Shield, Clock, Globe, Eye, BookOpen, Layers, Server, FileText, Smartphone, Menu, X, Activity } from 'lucide-react';
 import { ActiveModalType } from './GovInfoModals';
 import { VengeanceGlowBadge } from '@/components/ui/VengeanceUI';
 
@@ -17,16 +17,16 @@ interface GovHeaderProps {
   onOpenModal: (type: ActiveModalType) => void;
   onOpenDatasetReplay?: () => void;
   onOpenMobileQR?: () => void;
-  onOpenPitchTour?: () => void;
   isLiveApiMode?: boolean;
 }
 
 export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
   fontSizeLevel, onFontSizeChange, isHighContrast, onToggleContrast,
-  isMissionControl = false, onToggleMissionControl,
-  language, onToggleLanguage, onOpenModal, onOpenDatasetReplay, onOpenMobileQR, onOpenPitchTour, isLiveApiMode = true,
+  language, onToggleLanguage, onOpenModal, onOpenDatasetReplay, onOpenMobileQR, isLiveApiMode = true,
 }) {
   const [istTime, setIstTime] = useState('');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     const tick = () => setIstTime(new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST');
     tick();
@@ -35,136 +35,198 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
   }, []);
 
   return (
-    <header className="border-b border-slate-300 bg-white text-slate-900 shadow-sm sticky top-0 z-50">
-      {/* Tricolor Bar */}
-      <div className="h-[4px] w-full flex">
-        <div className="h-full w-1/3 bg-[#FF9933]" /><div className="h-full w-1/3 bg-white" /><div className="h-full w-1/3 bg-[#138808]" />
+    <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl text-slate-100 shadow-xl sticky top-0 z-50">
+      {/* Tricolor National Bar */}
+      <div className="h-[3px] w-full flex">
+        <div className="h-full w-1/3 bg-[#FF9933]" />
+        <div className="h-full w-1/3 bg-white" />
+        <div className="h-full w-1/3 bg-[#138808]" />
       </div>
 
-      {/* Utility Strip */}
-      <div className="bg-[#F1F5F9] border-b border-slate-200 px-4 lg:px-8 py-1 text-[11px] text-slate-600 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <VengeanceGlowBadge label="LIVE NATIONAL NETWORK" variant="emerald" />
-          <span className="font-semibold text-slate-800">
-
-            {language === 'hi' ? 'राष्ट्रीय मौसम स्टेशन नेटवर्क • वास्तविक समय सेंसर गुणवत्ता नियंत्रण' : 'National Weather Station Network • Automated Sensor Health & Quality Control'}
+      {/* Top Utility Strip */}
+      <div className="bg-slate-900/60 border-b border-slate-800/60 px-3 sm:px-6 lg:px-8 py-1.5 text-xs text-slate-400 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <VengeanceGlowBadge label="LIVE GRID" variant="emerald" className="scale-90 sm:scale-100" />
+          <span className="font-semibold text-slate-200 truncate text-[11px] sm:text-xs">
+            {language === 'hi' ? 'राष्ट्रीय स्वचालित मौसम स्टेशन गुणवत्ता निगरानी प्रणाली' : 'National Automatic Weather Station Quality Management System'}
           </span>
-          <span className="text-slate-400 hidden md:inline">|</span>
-          <div className="hidden lg:flex items-center gap-2 text-[10px]">
-            {([
-              { modal: 'architecture' as const, icon: <Server className="w-3 h-3 text-sky-600" />, en: 'System Design', hi: 'प्रणाली संरचना' },
-              { modal: 'methodology' as const, icon: <BookOpen className="w-3 h-3 text-amber-600" />, en: 'Quality Standards', hi: 'गुणवत्ता मानक' },
-              { modal: 'security' as const, icon: <Shield className="w-3 h-3 text-emerald-600" />, en: 'Zero-Trust Security', hi: 'शून्य-विश्वास सुरक्षा' },
-              { modal: 'provenance' as const, icon: <Layers className="w-3 h-3 text-purple-600" />, en: 'Data Sources', hi: 'डेटा स्रोत' },
-            ]).map((item, i) => (
-              <React.Fragment key={item.modal}>
-                {i > 0 && <span className="text-slate-300">•</span>}
-                <button onClick={() => onOpenModal(item.modal)} className="hover:text-[#002147] hover:underline flex items-center gap-1 font-medium">
-                  {item.icon}<span>{language === 'hi' ? item.hi : item.en}</span>
-                </button>
-              </React.Fragment>
-            ))}
-            <span className="text-slate-300">•</span>
-            {onOpenDatasetReplay && (
-              <button onClick={onOpenDatasetReplay} className="bg-[#002147] hover:bg-[#003366] text-white px-2 py-0.5 rounded font-bold flex items-center gap-1 text-[10px] shadow-2xs transition-colors">
-                <FileText className="w-3 h-3 text-amber-400" /><span>{language === 'hi' ? 'वास्तविक डेटा रिप्ले' : 'Historical Data Replay'}</span>
-              </button>
-            )}
-            <span className="text-slate-300">•</span>
-            {onOpenMobileQR && (
-              <button onClick={onOpenMobileQR} className="bg-emerald-700 hover:bg-emerald-800 text-white px-2 py-0.5 rounded font-bold flex items-center gap-1 text-[10px] shadow-2xs transition-colors cursor-pointer">
-                <Smartphone className="w-3 h-3 text-amber-300" /><span>{language === 'hi' ? 'फ़ोन से टेस्ट करें (QR)' : 'Test With Phone (QR)'}</span>
-              </button>
-            )}
-            <span className="text-slate-300">•</span>
-            {onOpenPitchTour && (
-              <button onClick={onOpenPitchTour} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-2.5 py-0.5 rounded font-extrabold flex items-center gap-1 text-[10px] shadow-sm transition-all animate-pulse cursor-pointer">
-                <Sparkles className="w-3 h-3 text-yellow-200" /><span>{language === 'hi' ? '⚡ ऑटो-गाइड पीपीटी टूर' : '⚡ Play Automated Pitch Tour'}</span>
-              </button>
-            )}
-          </div>
+          <span className="text-slate-600 hidden md:inline">•</span>
+          <span className="text-[10px] text-sky-400 font-mono hidden lg:inline">MoES • IMD • SIH 6073</span>
         </div>
 
-        {/* Accessibility Toolbar */}
-        <div className="flex items-center gap-3 font-medium">
-          <div className="flex items-center bg-white border border-slate-300 rounded px-1.5 py-0.5 space-x-1">
-            <span className="text-[10px] text-slate-500 mr-1">अ / A:</span>
-            {[-1, 0, 1].map(level => (
-              <React.Fragment key={level}>
-                {level > -1 && <span className="text-slate-300">|</span>}
-                <button onClick={() => onFontSizeChange(level)} className={`px-1 rounded text-[${10 + level}px] font-bold ${fontSizeLevel === level ? 'bg-[#002147] text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
-                  {level === -1 ? 'A-' : level === 0 ? 'A' : 'A+'}
-                </button>
-              </React.Fragment>
-            ))}
-          </div>
-          {onToggleMissionControl && (
-            <button onClick={onToggleMissionControl} className={`flex items-center gap-1 px-2.5 py-0.5 rounded border text-[11px] font-extrabold transition-all ${isMissionControl ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md shadow-purple-500/20' : 'bg-slate-900 text-sky-300 border-slate-700 hover:bg-slate-800'}`}>
-              <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
-              <span>{isMissionControl ? (language === 'hi' ? '🏛️ सरकारी दृश्य' : '🏛️ Government View') : (language === 'hi' ? '🚀 मिशन कंट्रोल' : '🚀 Mission Control')}</span>
+        {/* Quick Modal Triggers on Desktop */}
+        <div className="hidden xl:flex items-center gap-3 text-[11px]">
+          {([
+            { modal: 'architecture' as const, icon: <Server className="w-3 h-3 text-sky-400" />, en: 'System Design', hi: 'प्रणाली संरचना' },
+            { modal: 'methodology' as const, icon: <BookOpen className="w-3 h-3 text-amber-400" />, en: 'WMO Standards', hi: 'गुणवत्ता मानक' },
+            { modal: 'security' as const, icon: <Shield className="w-3 h-3 text-emerald-400" />, en: 'Security', hi: 'सुरक्षा' },
+            { modal: 'provenance' as const, icon: <Layers className="w-3 h-3 text-purple-400" />, en: 'Data Sources', hi: 'डेटा स्रोत' },
+          ]).map((item) => (
+            <button
+              key={item.modal}
+              onClick={() => onOpenModal(item.modal)}
+              className="hover:text-white text-slate-400 flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              {item.icon}
+              <span>{language === 'hi' ? item.hi : item.en}</span>
+            </button>
+          ))}
+          <span className="text-slate-700">|</span>
+          {onOpenDatasetReplay && (
+            <button
+              onClick={onOpenDatasetReplay}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 text-[10px] transition-colors cursor-pointer"
+            >
+              <FileText className="w-3 h-3 text-amber-400" />
+              <span>{language === 'hi' ? 'डेटा रिप्ले' : 'Replay Data'}</span>
             </button>
           )}
-          <button onClick={onToggleContrast} className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors ${isHighContrast ? 'bg-black text-yellow-300 border-yellow-300 font-bold' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'}`}>
+          {onOpenMobileQR && (
+            <button
+              onClick={onOpenMobileQR}
+              className="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded font-bold flex items-center gap-1 text-[10px] transition-colors cursor-pointer"
+            >
+              <Smartphone className="w-3 h-3 text-emerald-400" />
+              <span>{language === 'hi' ? 'फ़ोन टेस्ट (QR)' : 'Phone Node (QR)'}</span>
+            </button>
+          )}
+        </div>
 
-            <Eye className="w-3 h-3" /><span>{isHighContrast ? 'Contrast ON' : 'Contrast'}</span>
-          </button>
-          <button onClick={onToggleLanguage} className="flex items-center gap-1 px-2 py-0.5 rounded border border-slate-300 bg-white text-[#002147] font-bold hover:bg-slate-100">
-            <Globe className="w-3 h-3 text-[#002147]" /><span>{language === 'hi' ? 'English' : 'हिन्दी'}</span>
-          </button>
-          <div className="hidden sm:flex items-center gap-1.5 font-mono text-[11px] bg-slate-800 text-slate-100 px-2.5 py-0.5 rounded shadow-2xs">
-            <Clock className="w-3 h-3 text-emerald-400" /><span suppressHydrationWarning>{istTime || '20:30:00 IST'}</span>
+        {/* Accessibility & Time Toolbar */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 space-x-1">
+            <span className="text-[10px] text-slate-500 mr-1">A:</span>
+            {[-1, 0, 1].map(level => (
+              <button
+                key={level}
+                onClick={() => onFontSizeChange(level)}
+                className={`px-1.5 py-0.2 rounded text-[10px] font-bold transition-all ${
+                  fontSizeLevel === level ? 'bg-sky-500 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {level === -1 ? 'A-' : level === 0 ? 'A' : 'A+'}
+              </button>
+            ))}
           </div>
+
+          <button
+            onClick={onToggleContrast}
+            title="Toggle Contrast"
+            className={`p-1 sm:px-2 sm:py-0.5 rounded border text-[10px] transition-all flex items-center gap-1 ${
+              isHighContrast ? 'bg-yellow-400 text-slate-950 border-yellow-300 font-bold' : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+            }`}
+          >
+            <Eye className="w-3 h-3" />
+            <span className="hidden sm:inline">{isHighContrast ? 'High' : 'Normal'}</span>
+          </button>
+
+          <button
+            onClick={onToggleLanguage}
+            className="flex items-center gap-1 px-2 py-0.5 rounded border border-slate-800 bg-slate-900 text-sky-300 font-bold text-[10px] hover:bg-slate-800 transition-colors"
+          >
+            <Globe className="w-3 h-3 text-sky-400" />
+            <span>{language === 'hi' ? 'EN' : 'हिन्दी'}</span>
+          </button>
+
+          <div className="hidden md:flex items-center gap-1.5 font-mono text-[11px] bg-slate-900 text-slate-200 border border-slate-800 px-2 py-0.5 rounded">
+            <Clock className="w-3 h-3 text-emerald-400" />
+            <span suppressHydrationWarning>{istTime || 'IST'}</span>
+          </div>
+
+          {/* Mobile Drawer Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(prev => !prev)}
+            className="xl:hidden p-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+            aria-label="Toggle Navigation Menu"
+          >
+            {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
-      {/* Project Identity Banner */}
-      <div className="max-w-[1750px] mx-auto px-4 lg:px-8 py-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="shrink-0 flex items-center justify-center p-1.5 bg-blue-50 border border-blue-200 rounded-lg shadow-xs">
-            <svg className="w-11 h-12 text-[#002147]" viewBox="0 0 80 88" fill="none">
-              <circle cx="40" cy="44" r="36" stroke="#002147" strokeWidth="2" strokeDasharray="3 2" opacity="0.3" />
-              <circle cx="40" cy="44" r="26" stroke="#0284C7" strokeWidth="2" opacity="0.5" />
-              <circle cx="40" cy="44" r="16" stroke="#002147" strokeWidth="2.5" />
-              <path d="M40 18 V64" stroke="#002147" strokeWidth="3" strokeLinecap="round" />
-              <path d="M26 64 H54" stroke="#002147" strokeWidth="3" strokeLinecap="round" />
-              <circle cx="28" cy="22" r="3.5" fill="#FF9933" /><circle cx="52" cy="22" r="3.5" fill="#138808" />
-              <path d="M28 22 H52" stroke="#002147" strokeWidth="2" />
-              <circle cx="40" cy="44" r="4.5" fill="#0284C7" />
-              <path d="M40 8 Q56 24 40 40" stroke="#0284C7" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-              <path d="M40 4 Q62 24 40 44" stroke="#FF9933" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
-            </svg>
-          </div>
-          <div className="border-l-2 border-slate-300 pl-4">
-            <div className="text-xs text-slate-600 font-medium tracking-wide">
-              {language === 'hi' ? 'राष्ट्रीय स्वचालित मौसम अवलोकन नेटवर्क • भारत' : 'National Automatic Weather Station Observational Network • India'}
-            </div>
-            <h1 className="text-lg md:text-xl font-bold tracking-tight text-[#002147]">
-              {language === 'hi' ? 'राष्ट्रीय स्वचालित मौसम स्टेशन गुणवत्ता निगरानी प्रणाली' : 'National Automatic Weather Station Quality Management System'}
-            </h1>
-            <div className="text-xs font-semibold text-slate-700 flex items-center gap-2 mt-0.5 flex-wrap">
-              <span>Real-Time Weather Tracking · Automated Sensor Health Check · Reliable Forecast Feed</span>
-              <span className="inline-block w-1 h-1 rounded-full bg-slate-400" />
-              <span className="font-mono text-[11px] text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">20 National Observatories Active</span>
-            </div>
-          </div>
-        </div>
-
+      {/* Main Brand Title & Telemetry Header */}
+      <div className="max-w-[1750px] mx-auto px-4 lg:px-8 py-2.5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="hidden lg:flex flex-col items-end text-right">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#002147]">
-              <Shield className="w-3.5 h-3.5 text-emerald-600" /><span>WMO-No. 8 Weather Standards</span>
-            </div>
-            <span className="text-[10px] text-slate-500">Autonomous 24/7 Sensor Fault Detection &amp; Quality Audit</span>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/20 shrink-0">
+            <Activity className="w-5 h-5 text-white" />
           </div>
-          <div className="px-3 py-1.5 bg-[#F8FAFC] border border-slate-300 rounded text-right">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{isLiveApiMode ? 'Live Atmospheric Feed' : 'Telemetry Feed'}</div>
-            <div className={`text-xs font-bold flex items-center gap-1.5 justify-end ${isLiveApiMode ? 'text-sky-700' : 'text-emerald-700'}`}>
-              <span className={`w-2 h-2 rounded-full inline-block animate-pulse ${isLiveApiMode ? 'bg-sky-500' : 'bg-emerald-600'}`} />
-              <span>{isLiveApiMode ? 'Open-Meteo 20/20 Live Sync' : 'Simulated Real-Time Stream'}</span>
+          <div className="border-l border-slate-800 pl-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base sm:text-lg font-black tracking-tight text-white">
+                NAWS-QMS
+              </span>
+              <span className="bg-sky-950 text-sky-400 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border border-sky-800/60 hidden sm:inline">
+                MoES • IMD
+              </span>
+              <span className="bg-emerald-950 text-emerald-300 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border border-emerald-800/60">
+                WMO Pub 8
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 hidden sm:block">
+              {language === 'hi'
+                ? 'भारत की 766 जिला वेधशालाओं हेतु वास्तविक समय डेटा गुणवत्ता व दोष निवारण पोर्टल'
+                : 'Real-Time Edge Quality Assurance & Meteorological Anomaly Discrimination'}
+            </p>
+          </div>
+        </div>
+
+        {/* Live Feed Status Pill */}
+        <div className="flex items-center gap-2">
+          <div className="px-3 py-1 bg-slate-900/90 border border-slate-800 rounded-lg text-right">
+            <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
+              {isLiveApiMode ? 'Live Atmospheric Feed' : 'Telemetry Mode'}
+            </div>
+            <div className="text-[11px] font-bold text-sky-400 flex items-center gap-1.5 justify-end font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Open-Meteo &amp; Edge Sync</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile Drawer Dropdown */}
+      {isMobileMenuOpen && (
+        <div className="xl:hidden bg-slate-950 border-b border-slate-800 p-4 space-y-3 animate-fadeIn">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {([
+              { modal: 'architecture' as const, icon: <Server className="w-3.5 h-3.5 text-sky-400" />, label: 'System Design' },
+              { modal: 'methodology' as const, icon: <BookOpen className="w-3.5 h-3.5 text-amber-400" />, label: 'WMO Standards' },
+              { modal: 'security' as const, icon: <Shield className="w-3.5 h-3.5 text-emerald-400" />, label: 'Security Specs' },
+              { modal: 'provenance' as const, icon: <Layers className="w-3.5 h-3.5 text-purple-400" />, label: 'Data Sources' },
+            ]).map((item) => (
+              <button
+                key={item.modal}
+                onClick={() => { onOpenModal(item.modal); setIsMobileMenuOpen(false); }}
+                className="flex items-center gap-2 p-2 bg-slate-900 rounded-lg border border-slate-800 text-slate-300 hover:text-white"
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+            {onOpenDatasetReplay && (
+              <button
+                onClick={() => { onOpenDatasetReplay(); setIsMobileMenuOpen(false); }}
+                className="flex-1 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5"
+              >
+                <FileText className="w-3.5 h-3.5 text-amber-400" />
+                <span>Replay Data</span>
+              </button>
+            )}
+            {onOpenMobileQR && (
+              <button
+                onClick={() => { onOpenMobileQR(); setIsMobileMenuOpen(false); }}
+                className="flex-1 py-2 bg-emerald-950 border border-emerald-800 rounded-lg text-xs font-semibold text-emerald-300 flex items-center justify-center gap-1.5"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Phone QR</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 });

@@ -335,7 +335,7 @@ export const GovNetworkMap = React.memo<Props>(function GovNetworkMap({
       </div>
 
       {/* Map Canvas Area */}
-      <div className="relative bg-gradient-to-b from-[#e0f2fe] via-[#f0f9ff] to-[#e2e8f0] p-2 flex-1 min-h-[620px] lg:h-[720px]">
+      <div className="relative bg-gradient-to-b from-[#e0f2fe] via-[#f0f9ff] to-[#e2e8f0] p-1.5 sm:p-2 flex-1 min-h-[440px] h-[58vh] lg:h-[720px]">
         {/* Top Badges */}
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 pointer-events-none">
           <div className="bg-white/90 backdrop-blur-xs border border-slate-300 px-2.5 py-1 rounded shadow-xs text-[11px] font-mono text-slate-800">
@@ -361,7 +361,7 @@ export const GovNetworkMap = React.memo<Props>(function GovNetworkMap({
         </div>
 
         {/* Dynamic Leaflet Map of India */}
-        <div className="w-full h-full min-h-[620px] lg:h-[720px] rounded-lg overflow-hidden border border-slate-300 drop-shadow-sm">
+        <div className="w-full h-full min-h-[440px] h-[58vh] lg:h-[720px] rounded-lg overflow-hidden border border-slate-300 drop-shadow-sm">
           <DynamicLeafletMap 
             nodes={filteredNodes}
             activeNode={activeNode}
