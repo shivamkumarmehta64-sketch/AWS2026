@@ -7,17 +7,11 @@ import {
   Play,
   Pause,
   RotateCcw,
-  FastForward,
-  CheckCircle2,
   AlertTriangle,
   CloudLightning,
   Wrench,
   FileText,
   Download,
-  Info,
-  Layers,
-  ChevronRight,
-  ShieldCheck,
   Clock,
   Sparkles
 } from 'lucide-react';
@@ -44,8 +38,18 @@ export const GovDatasetReplayModal: React.FC<GovDatasetReplayModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'benchmarks' | 'upload'>('benchmarks');
   const [selectedBenchmarkId, setSelectedBenchmarkId] = useState<string>('cyclone_biparjoy');
-  const [report, setReport] = useState<BatchEvaluationReport | null>(null);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [report, setReport] = useState<BatchEvaluationReport | null>(() => {
+    const benchmark = AUTHENTIC_IMD_BENCHMARKS.find((b) => b.id === 'cyclone_biparjoy');
+    if (!benchmark) return null;
+    const records = parseCSVTelemetry(benchmark.csv, benchmark.stationId);
+    return evaluateTelemetryDataset(records, benchmark.title, 'PRESET_BENCHMARK');
+  });
+  const [currentIndex, setCurrentIndex] = useState<number>(() => {
+    const benchmark = AUTHENTIC_IMD_BENCHMARKS.find((b) => b.id === 'cyclone_biparjoy');
+    if (!benchmark) return 0;
+    const records = parseCSVTelemetry(benchmark.csv, benchmark.stationId);
+    return records.length;
+  });
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playSpeed, setPlaySpeed] = useState<number>(1); // 1x, 2x, 5x
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
@@ -67,14 +71,9 @@ export const GovDatasetReplayModal: React.FC<GovDatasetReplayModalProps> = ({
     setUploadError(null);
   };
 
-  // Load selected benchmark by default
   useEffect(() => {
-    if (isOpen) {
-      loadBenchmark('cyclone_biparjoy');
-    } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsPlaying(false);
-      if (timerRef.current) clearInterval(timerRef.current);
+    if (!isOpen && timerRef.current) {
+      clearInterval(timerRef.current);
     }
   }, [isOpen]);
 
@@ -110,7 +109,7 @@ export const GovDatasetReplayModal: React.FC<GovDatasetReplayModalProps> = ({
         setCurrentIndex(rep.results.length);
         setIsPlaying(false);
         setActiveTab('upload');
-      } catch (err) {
+      } catch {
         setUploadError(
           language === 'hi'
             ? 'फ़ाइल को संसाधित करने में त्रुटि। कृपया सुनिश्चित करें कि यह एक वैध CSV या JSON है।'

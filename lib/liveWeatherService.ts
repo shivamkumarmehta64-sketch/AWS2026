@@ -5,6 +5,9 @@ export interface LiveObservation {
   temperature: number;
   pressure: number;
   humidity: number;
+  windSpeedKph?: number;
+  windDirectionDeg?: number;
+  rainfallMm10min?: number;
   timestamp: number;
   timeIST: string;
   source: 'OPEN_METEO_PUBLIC_API' | 'WEATHERSTACK_API' | string;
@@ -42,6 +45,9 @@ export async function fetchLiveStationObservation(
             temperature: payload.data.temperature,
             pressure: payload.data.pressure,
             humidity: payload.data.humidity,
+            windSpeedKph: payload.data.windSpeedKph,
+            windDirectionDeg: payload.data.windDirectionDeg,
+            rainfallMm10min: payload.data.rainfallMm10min,
             timestamp: payload.data.timestamp || now,
             timeIST: payload.data.timeIST,
             source: payload.provider === 'WEATHERSTACK' ? 'WEATHERSTACK_API' : 'OPEN_METEO_PUBLIC_API',
@@ -61,7 +67,7 @@ export async function fetchLiveStationObservation(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4500);
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${station.latitude.toFixed(3)}&longitude=${station.longitude.toFixed(3)}&current=temperature_2m,relative_humidity_2m,surface_pressure&timezone=Asia%2FKolkata`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${station.latitude.toFixed(3)}&longitude=${station.longitude.toFixed(3)}&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation&timezone=Asia%2FKolkata`;
 
     const response = await fetch(url, {
       signal: controller.signal,
@@ -86,12 +92,18 @@ export async function fetchLiveStationObservation(
     const temp = Math.round(Number(current.temperature_2m) * 10) / 10;
     const press = Math.round(Number(current.surface_pressure) * 10) / 10;
     const hum = Math.round(Number(current.relative_humidity_2m) * 10) / 10;
+    const windSpeed = current.wind_speed_10m !== undefined ? Math.round(Number(current.wind_speed_10m) * 10) / 10 : undefined;
+    const windDir = current.wind_direction_10m !== undefined ? Math.round(Number(current.wind_direction_10m)) : undefined;
+    const rain = current.precipitation !== undefined ? Math.round(Number(current.precipitation) * 10) / 10 : undefined;
 
     const observation: LiveObservation = {
       stationId: station.stationId,
       temperature: temp,
       pressure: press,
       humidity: hum,
+      windSpeedKph: windSpeed,
+      windDirectionDeg: windDir,
+      rainfallMm10min: rain,
       timestamp: now,
       timeIST: new Date(now).toLocaleTimeString('en-IN', {
         timeZone: 'Asia/Kolkata',
@@ -153,7 +165,7 @@ export async function fetchBatchLiveObservations(
     const lats = unexpiredStations.map((s) => s.latitude.toFixed(3)).join(',');
     const lons = unexpiredStations.map((s) => s.longitude.toFixed(3)).join(',');
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,surface_pressure&timezone=Asia%2FKolkata`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation&timezone=Asia%2FKolkata`;
 
     const response = await fetch(url, {
       signal: controller.signal,
@@ -178,12 +190,18 @@ export async function fetchBatchLiveObservations(
         const temp = Math.round(Number(current.temperature_2m) * 10) / 10;
         const press = Math.round(Number(current.surface_pressure) * 10) / 10;
         const hum = Math.round(Number(current.relative_humidity_2m) * 10) / 10;
+        const windSpeed = current.wind_speed_10m !== undefined ? Math.round(Number(current.wind_speed_10m) * 10) / 10 : undefined;
+        const windDir = current.wind_direction_10m !== undefined ? Math.round(Number(current.wind_direction_10m)) : undefined;
+        const rain = current.precipitation !== undefined ? Math.round(Number(current.precipitation) * 10) / 10 : undefined;
 
         const obs: LiveObservation = {
           stationId: station.stationId,
           temperature: temp,
           pressure: press,
           humidity: hum,
+          windSpeedKph: windSpeed,
+          windDirectionDeg: windDir,
+          rainfallMm10min: rain,
           timestamp: now,
           timeIST: new Date(now).toLocaleTimeString('en-IN', {
             timeZone: 'Asia/Kolkata',

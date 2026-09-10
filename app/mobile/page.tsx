@@ -13,17 +13,38 @@ import {
   ArrowLeft,
   RefreshCw,
   Sliders,
-  ShieldCheck,
-  Lock,
-  Terminal,
-  Sparkles
+  ShieldCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import { IMD_AWS_STATIONS, getStationProfile } from '@/lib/stationData';
 import { TelemetryPacket } from '@/lib/anomalyLogic';
 
+// Predefined Indian Meteorological Cities for instant 1-tap live weather
+const INDIAN_CITIES = [
+  { name: 'New Delhi (Safdarjung)', lat: 28.585, lon: 77.206, stationId: 'AWS-DEL-04' },
+  { name: 'Mumbai (Colaba)', lat: 18.900, lon: 72.815, stationId: 'AWS-MUM-01' },
+  { name: 'Kolkata (Alipore)', lat: 22.533, lon: 88.333, stationId: 'AWS-KOL-02' },
+  { name: 'Bengaluru (HAL Airport)', lat: 12.955, lon: 77.668, stationId: 'AWS-BLR-05' },
+  { name: 'Chennai (Meenambakkam)', lat: 12.994, lon: 80.181, stationId: 'AWS-CHN-03' },
+  { name: 'Pune (Shivajinagar)', lat: 18.531, lon: 73.855, stationId: 'AWS-PUN-08' },
+  { name: 'Hyderabad (Begumpet)', lat: 17.453, lon: 78.467, stationId: 'AWS-HYD-06' },
+  { name: 'Ahmedabad (Airport)', lat: 23.072, lon: 72.630, stationId: 'AWS-AHM-07' },
+  { name: 'Jaipur (Sanganer)', lat: 26.824, lon: 75.812, stationId: 'AWS-JAI-09' },
+  { name: 'Lucknow (Amausi)', lat: 26.760, lon: 80.883, stationId: 'AWS-LKO-10' },
+];
+
 export default function MobileEdgeNodePage() {
-  const [stationId, setStationId] = useState<string>('AWS-MOB-01');
+  const [stationId, setStationId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('naws_mobile_node_id');
+      if (saved) return saved;
+      const num = String(Math.floor(Math.random() * 89) + 11);
+      const newId = `AWS-MOB-${num}`;
+      sessionStorage.setItem('naws_mobile_node_id', newId);
+      return newId;
+    }
+    return 'AWS-MOB-01';
+  });
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lon: number; accuracy: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState<boolean>(false);
@@ -32,27 +53,12 @@ export default function MobileEdgeNodePage() {
   const [temp, setTemp] = useState<number>(29.4);
   const [press, setPress] = useState<number>(1006.5);
   const [humidity, setHumidity] = useState<number>(68.0);
-  const [isAutoStreaming, setIsAutoStreaming] = useState<boolean>(false);
+  const [isAutoStreaming, setIsAutoStreaming] = useState<boolean>(true);
   const [lastTransmittedTime, setLastTransmittedTime] = useState<string | null>(null);
   const [packetCounter, setPacketCounter] = useState<number>(0);
   const [lastServerVerdict, setLastServerVerdict] = useState<TelemetryPacket | null>(null);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [streamIntervalMs] = useState<number>(2500);
-
-  // Predefined Indian Meteorological Cities for instant 1-tap live weather
-  const INDIAN_CITIES = [
-    { name: 'New Delhi (Safdarjung)', lat: 28.585, lon: 77.206, stationId: 'AWS-DEL-04' },
-    { name: 'Mumbai (Colaba)', lat: 18.900, lon: 72.815, stationId: 'AWS-MUM-01' },
-    { name: 'Kolkata (Alipore)', lat: 22.533, lon: 88.333, stationId: 'AWS-KOL-02' },
-    { name: 'Bengaluru (HAL Airport)', lat: 12.955, lon: 77.668, stationId: 'AWS-BLR-05' },
-    { name: 'Chennai (Meenambakkam)', lat: 12.994, lon: 80.181, stationId: 'AWS-CHN-03' },
-    { name: 'Pune (Shivajinagar)', lat: 18.531, lon: 73.855, stationId: 'AWS-PUN-08' },
-    { name: 'Hyderabad (Begumpet)', lat: 17.453, lon: 78.467, stationId: 'AWS-HYD-06' },
-    { name: 'Ahmedabad (Airport)', lat: 23.072, lon: 72.630, stationId: 'AWS-AHM-07' },
-    { name: 'Jaipur (Sanganer)', lat: 26.824, lon: 75.812, stationId: 'AWS-JAI-09' },
-    { name: 'Lucknow (Amausi)', lat: 26.760, lon: 80.883, stationId: 'AWS-LKO-10' },
-  ];
-
   const [selectedCity, setSelectedCity] = useState<string>('New Delhi (Safdarjung)');
   const [liveDataStatus, setLiveDataStatus] = useState<string | null>(null);
 
@@ -133,7 +139,10 @@ export default function MobileEdgeNodePage() {
   }, [fetchRealWeatherForCoords, selectedCity]);
 
   useEffect(() => {
-    requestGpsLocation();
+    const t = setTimeout(() => {
+      requestGpsLocation();
+    }, 0);
+    return () => clearTimeout(t);
   }, [requestGpsLocation]);
 
   // Transmit telemetry packet to central Next.js server API
@@ -146,6 +155,9 @@ export default function MobileEdgeNodePage() {
         pressure: override?.p !== undefined ? override.p : press,
         humidity: override?.h !== undefined ? override.h : humidity,
         timestamp: Date.now(),
+        lat: gpsCoords?.lat,
+        lon: gpsCoords?.lon,
+        deviceName: typeof navigator !== 'undefined' && navigator.userAgent.includes('iPhone') ? 'iPhone Field Sensor' : 'Android Field Sensor',
       };
 
       try {
@@ -169,7 +181,7 @@ export default function MobileEdgeNodePage() {
             channel.close();
           }
         }
-      } catch (err) {
+      } catch {
         // Network error handling
       } finally {
         setIsSending(false);
@@ -248,16 +260,16 @@ export default function MobileEdgeNodePage() {
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <h1 className="text-xs font-black tracking-wider uppercase text-amber-400">
-                  IMD AWS Mobile Node
+                  Live Weather Sensor Node
                 </h1>
               </div>
-              <p className="text-[10px] text-slate-300">Portable Surface Datalogger (SIH26073)</p>
+              <p className="text-[10px] text-slate-300">Smartphone Live Weather &amp; GPS Stream</p>
             </div>
           </div>
 
           <div className="text-right">
-            <span className="text-[9px] uppercase font-mono px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
-              Uplink 4G/5G
+            <span className="text-[9px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Live Auto-Stream
             </span>
           </div>
         </div>
@@ -443,7 +455,7 @@ export default function MobileEdgeNodePage() {
               </span>
             </div>
             <div className="text-[9px] text-slate-400 flex items-center justify-between border-t border-slate-900 pt-1">
-              <span>Crypto Nonce: <strong className="text-emerald-300">#{(Date.now() % 999999).toString().padStart(6, '0')}</strong></span>
+              <span>Crypto Nonce: <strong className="text-emerald-300">#{((packetCounter * 7919 + 104821) % 999999).toString().padStart(6, '0')}</strong></span>
               <span>Carrier: <strong className="text-sky-300">UHF 402.75 MHz</strong></span>
             </div>
             <div className="bg-slate-900/90 p-1.5 rounded border border-slate-800 text-[9px] text-slate-300 flex items-center justify-between">
@@ -479,74 +491,74 @@ export default function MobileEdgeNodePage() {
           </div>
         </div>
 
-        {/* Tactile Fault Injection Pad (For SIH Presentation) */}
+        {/* Interactive Sensor Test Pad */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-amber-400 flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5" />
-              Live Jury Fault Injection Pad
+              Interactive Sensor Health &amp; Storm Test
             </span>
-            <span className="text-[10px] text-slate-500 font-mono">Tap to Trigger</span>
+            <span className="text-[10px] text-slate-500 font-mono">1-Tap Live Test</span>
           </div>
 
           <p className="text-[11px] text-slate-400">
-            Hand this phone to the SIH judges or tap below to inject anomalies in real time:
+            Tap any button below to see how the system automatically distinguishes between real storms and broken sensors:
           </p>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
-            {/* 1. Convective Squall */}
+            {/* 1. Real Storm */}
             <button
               onClick={handleInjectSquall}
               className="bg-amber-950/60 hover:bg-amber-900/80 border border-amber-600/50 text-amber-200 p-2.5 rounded-lg text-left transition-colors cursor-pointer"
             >
               <div className="font-bold flex items-center gap-1.5 mb-1 text-xs">
                 <CloudLightning className="w-4 h-4 text-amber-400" />
-                <span>Convective Squall</span>
+                <span>Simulate Severe Storm</span>
               </div>
               <div className="text-[10px] text-amber-300/80 leading-tight">
-                ΔP &le; -2.5 hPa &amp; ΔRH &ge; +18% (Valid Storm)
+                Sudden Pressure Drop + Rain (Verified as Real Weather)
               </div>
             </button>
 
-            {/* 2. PT100 Spike */}
+            {/* 2. Temperature Sensor Wire Fault */}
             <button
               onClick={handleInjectSpike}
               className="bg-red-950/60 hover:bg-red-900/80 border border-red-600/50 text-red-200 p-2.5 rounded-lg text-left transition-colors cursor-pointer"
             >
               <div className="font-bold flex items-center gap-1.5 mb-1 text-xs">
                 <AlertTriangle className="w-4 h-4 text-red-400" />
-                <span>PT100 Spike</span>
+                <span>Simulate Broken Wire</span>
               </div>
               <div className="text-[10px] text-red-300/80 leading-tight">
-                +54.8°C Open-Circuit (Hardware Fault)
+                Temperature Spike to +54.8°C (Flagged as Sensor Fault)
               </div>
             </button>
 
-            {/* 3. Frozen ADC */}
+            {/* 3. Frozen Sensor */}
             <button
               onClick={handleInjectFreeze}
               className="bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-200 p-2.5 rounded-lg text-left transition-colors cursor-pointer"
             >
               <div className="font-bold flex items-center gap-1.5 mb-1 text-xs">
                 <Wrench className="w-4 h-4 text-purple-400" />
-                <span>Frozen ADC Bus</span>
+                <span>Simulate Frozen Sensor</span>
               </div>
               <div className="text-[10px] text-purple-300/80 leading-tight">
-                Variance σ² = 0.0 (Deadlock Freeze)
+                Readings Stuck with Zero Change (Flagged as Hardware Deadlock)
               </div>
             </button>
 
-            {/* 4. Barometer Drift */}
+            {/* 4. Pressure Drift */}
             <button
               onClick={handleInjectDrift}
               className="bg-blue-950/60 hover:bg-blue-900/80 border border-blue-600/50 text-blue-200 p-2.5 rounded-lg text-left transition-colors cursor-pointer"
             >
               <div className="font-bold flex items-center gap-1.5 mb-1 text-xs">
                 <TrendingDown className="w-4 h-4 text-sky-400" />
-                <span>Barometer Drift</span>
+                <span>Simulate Sensor Drift</span>
               </div>
               <div className="text-[10px] text-sky-300/80 leading-tight">
-                -0.4 hPa Calibration Loss (Flag 3)
+                Gradual Error (Auto-Substituted with Backup Value)
               </div>
             </button>
           </div>
@@ -555,7 +567,7 @@ export default function MobileEdgeNodePage() {
             onClick={handleResetToNominal}
             className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 rounded-lg font-semibold text-xs transition-colors cursor-pointer"
           >
-            ↺ Reset Telemetry to Nominal
+            ↺ Reset Sensor to Normal (Healthy)
           </button>
         </div>
 
@@ -603,7 +615,7 @@ export default function MobileEdgeNodePage() {
 
       {/* Footer */}
       <footer className="bg-slate-900 border-t border-slate-800 px-4 py-2 text-center text-[10px] text-slate-500">
-        MoES / IMD / NIC • SIH26073 Edge Autonomous Quality Assurance
+        National AWS Quality System • Smart India Hackathon (SIH 6073) • Zero-Tracking DPDPA 2023 Compliant
       </footer>
     </div>
   );

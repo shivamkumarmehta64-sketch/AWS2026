@@ -3,20 +3,20 @@ import { nicWmoEngineInstance, TelemetryPacket } from '@/lib/anomalyLogic';
 import { IMD_AWS_STATIONS, getStationProfile } from '@/lib/stationData';
 import { fetchLiveStationObservation } from '@/lib/liveWeatherService';
 
-// In-memory sliding window rate limiter: max 60 requests per minute per IP
+// In-memory sliding window rate limiter: max 240 requests per minute per station/IP
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 // In-memory ring buffer for live ingested telemetry from mobile phones / ESP32
 const liveIngestedBuffer: TelemetryPacket[] = [];
 
-function isRateLimited(ip: string): boolean {
+function isRateLimited(key: string): boolean {
   const now = Date.now();
   const windowMs = 60 * 1000;
-  const maxRequests = 60;
+  const maxRequests = 240;
 
-  const record = rateLimitMap.get(ip);
+  const record = rateLimitMap.get(key);
   if (!record || record.resetTime < now) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+    rateLimitMap.set(key, { count: 1, resetTime: now + windowMs });
     return false;
   }
 
@@ -39,24 +39,13 @@ export async function POST(request: NextRequest) {
   const startTime = performance.now();
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1';
 
-  // 1. Rate limiting
-  if (isRateLimited(clientIp)) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Rate limit exceeded. Maximum 60 requests per minute allowed.',
-      },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
-  // 2. Content Length Check (< 10 KB)
+  // 1. Content Length Check (< 15 KB)
   const contentLength = Number(request.headers.get('content-length') || 0);
-  if (contentLength > 10240) {
+  if (contentLength > 15360) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Payload Too Large. Maximum allowed size is 10 KB.',
+        error: 'Payload Too Large. Maximum allowed size is 15 KB.',
       },
       { status: 413 }
     );
@@ -64,39 +53,39 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { stationId, temperature, pressure, humidity, timestamp } = body;
+    const { stationId, temperature, pressure, humidity, timestamp, lat, lon, deviceName } = body;
 
     if (!stationId || typeof stationId !== 'string') {
       return NextResponse.json(
         {
           success: false,
-          error: 'Missing or invalid parameter: stationId (e.g. "AWS-DEL-04")',
+          error: 'Missing or invalid parameter: stationId (e.g. "AWS-MOB-01" or "AWS-DEL-04")',
         },
         { status: 400 }
       );
     }
 
-    // Strict Regex Validation for Station ID
-    const stationIdRegex = /^AWS-[A-Z]{3}-\d{2}$/;
+    // Rate limiting keyed by stationId or clientIp
+    const rateLimitKey = `${stationId}_${clientIp}`;
+    if (isRateLimited(rateLimitKey)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Rate limit exceeded. Maximum 240 requests per minute allowed.',
+        },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      );
+    }
+
+    // Flexible Station ID format supporting mobile nodes, districts, and legacy IMD nodes
+    const stationIdRegex = /^AWS-[A-Za-z0-9_-]{2,24}$/;
     if (!stationIdRegex.test(stationId)) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Malformed station ID format. Expected format: AWS-XXX-99 (e.g. AWS-DEL-04)',
+          error: 'Malformed station ID format. Expected format: AWS-XXX-99 or AWS-MOB-XX',
         },
         { status: 400 }
-      );
-    }
-
-    // Validate registered station
-    const station = getStationProfile(stationId);
-    if (!station) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Unregistered station ID: ${stationId}. Must be one of the 20 registered nodes.`,
-        },
-        { status: 404 }
       );
     }
 
@@ -126,6 +115,13 @@ export async function POST(request: NextRequest) {
       rawHum,
       safeTimestamp
     );
+
+    // Attach mobile hardware GPS and device metadata if provided
+    (evaluatedPacket as unknown as { mobileMetadata?: { lat?: number; lon?: number; deviceName?: string } }).mobileMetadata = {
+      lat: typeof lat === 'number' && !isNaN(lat) ? lat : undefined,
+      lon: typeof lon === 'number' && !isNaN(lon) ? lon : undefined,
+      deviceName: typeof deviceName === 'string' ? deviceName : 'Field Smartphone Sensor',
+    };
 
     // Save into live ingestion ring buffer for real-time mobile sync
     liveIngestedBuffer.unshift(evaluatedPacket);
