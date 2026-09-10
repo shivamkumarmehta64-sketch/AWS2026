@@ -158,7 +158,7 @@ export const GovObservationConsole = React.memo<Props>(function GovObservationCo
   isLiveApiMode = true, onToggleLiveApiMode, liveStatusInfo, isSyncingLive = false, onManualSync,
 }) {
   const [mounted, setMounted] = useState(false);
-  const [isMissionControlVibe, setIsMissionControlVibe] = useState(false);
+  const [isMissionControlVibe, setIsMissionControlVibe] = useState(true);
   const [timelineFilter, setTimelineFilter] = useState<'LIVE' | '1H' | '6H' | '24H'>('LIVE');
   const [isLinkSevered, setIsLinkSevered] = useState<boolean>(false);
   const [bufferedPackets, setBufferedPackets] = useState<number>(0);
