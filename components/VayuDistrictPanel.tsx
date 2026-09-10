@@ -123,7 +123,7 @@ export const VayuDistrictPanel: React.FC<Props> = ({
   };
 
   return (
-    <div className="bg-white border-2 border-[#002147] rounded-xl shadow-xl overflow-hidden flex flex-col my-4">
+    <div className="bg-slate-900/95 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col my-4 text-white backdrop-blur-2xl">
       {/* 1. HEADER */}
       <div className="bg-gradient-to-r from-[#002147] via-[#0B3B60] to-[#002147] text-white p-4">
         <div className="flex items-start justify-between flex-wrap gap-3">

@@ -47,8 +47,17 @@ export const GovNetworkStrip = React.memo<Props>(function GovNetworkStrip({
             </span>
             <span className="bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-amber-300 flex items-center gap-1">
               <Activity className="w-3 h-3 text-amber-400" />
-              <span>{ingestInterval} Edge Ingest</span>
+              <span>{ingestInterval} Ingest</span>
             </span>
+            {anomalyTally.critical > 0 ? (
+              <span className="bg-red-950/80 border border-red-800/80 px-2 py-0.5 rounded text-red-300 font-bold">
+                {anomalyTally.critical} Faults Quarantined
+              </span>
+            ) : (
+              <span className="bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-slate-400">
+                0 Active Faults
+              </span>
+            )}
           </div>
         </div>
 

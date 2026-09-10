@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { TelemetryPacket, WMOQualityFlag, GovAlertLevel } from '@/lib/anomalyLogic';
+import { TelemetryPacket, WMOQualityFlag } from '@/lib/anomalyLogic';
 import { IMD_AWS_STATIONS, IMDStationProfile } from '@/lib/stationData';
-import { ALL_INDIA_DISTRICTS, DistrictGeoNode, districtToStationProfile } from '@/lib/indiaDistrictCatalog';
+import { ALL_INDIA_DISTRICTS, districtToStationProfile } from '@/lib/indiaDistrictCatalog';
 import { ALL_766_DISTRICTS, IndiaDistrict } from '@/lib/india766Districts';
 import { BasemapStyle } from './LeafletMap';
 import {

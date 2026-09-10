@@ -75,7 +75,7 @@ export const GovHeatwaveDSSPanel: React.FC<Props> = ({
   }, [heatwaveReports]);
 
   return (
-    <div className="bg-white border-2 border-[#ea580c] rounded-xl shadow-md overflow-hidden space-y-0">
+    <div className="bg-slate-900/95 border border-slate-800 rounded-xl shadow-2xl overflow-hidden space-y-0 text-white backdrop-blur-2xl">
       {/* Header with IMD Source Link */}
       <div className="bg-gradient-to-r from-[#7c2d12] via-[#ea580c] to-[#c2410c] text-white p-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
