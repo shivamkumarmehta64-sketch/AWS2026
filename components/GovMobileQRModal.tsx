@@ -25,9 +25,7 @@ export const GovMobileQRModal: React.FC<GovMobileQRModalProps> = ({
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [mobileUrl, setMobileUrl] = useState<string>('');
-  const [customHost, setCustomHost] = useState<string>('');
   const [detectedLanIp, setDetectedLanIp] = useState<string | null>(null);
-  const [connectionMode, setConnectionMode] = useState<'WIFI' | 'TUNNEL'>('WIFI');
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
   const generateQRCode = async (url: string) => {
@@ -47,48 +45,37 @@ export const GovMobileQRModal: React.FC<GovMobileQRModalProps> = ({
     if (!isOpen) return;
     if (typeof window === 'undefined') return;
 
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    let isMounted = true;
 
-    if (isLocalhost) {
-      // Auto-detect host machine LAN IP so phone on Wi-Fi connects without localhost error
-      fetch('/api/network-ip')
-        .then((res) => res.json())
-        .then((data) => {
+    const setupUrl = async () => {
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      let targetUrl = `${window.location.origin}/mobile`;
+
+      if (isLocalhost) {
+        try {
+          const res = await fetch('/api/network-ip');
+          const data = await res.json();
           if (data?.lanIp && data.lanIp !== '127.0.0.1') {
-            setDetectedLanIp(data.lanIp);
-            const lanUrl = `http://${data.lanIp}:3000/mobile`;
-            setMobileUrl(lanUrl);
-            setCustomHost(`http://${data.lanIp}:3000`);
-            generateQRCode(lanUrl);
-          } else {
-            fallbackLocal();
+            if (isMounted) setDetectedLanIp(data.lanIp);
+            targetUrl = `http://${data.lanIp}:3000/mobile`;
           }
-        })
-        .catch(() => fallbackLocal());
-    } else {
-      // In production (e.g. Vercel/public domain), use actual public origin
-      const origin = window.location.origin;
-      const defaultUrl = `${origin}/mobile`;
-      setMobileUrl(defaultUrl);
-      setCustomHost(origin);
-      generateQRCode(defaultUrl);
-    }
+        } catch {
+          // fallback to default targetUrl
+        }
+      }
 
-    function fallbackLocal() {
-      const origin = window.location.origin;
-      const defaultUrl = `${origin}/mobile`;
-      setMobileUrl(defaultUrl);
-      setCustomHost(origin);
-      generateQRCode(defaultUrl);
-    }
+      if (isMounted) {
+        setMobileUrl(targetUrl);
+        await generateQRCode(targetUrl);
+      }
+    };
+
+    setupUrl();
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen]);
-
-  const handleCustomHostChange = (newOrigin: string) => {
-    setCustomHost(newOrigin);
-    const updated = `${newOrigin.replace(/\/$/, '')}/mobile`;
-    setMobileUrl(updated);
-    generateQRCode(updated);
-  };
 
   const handleCopy = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {

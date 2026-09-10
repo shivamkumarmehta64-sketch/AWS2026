@@ -187,7 +187,7 @@ export default function MobileEdgeNodePage() {
         setIsSending(false);
       }
     },
-    [stationId, temp, press, humidity]
+    [stationId, temp, press, humidity, gpsCoords]
   );
 
   // Auto-stream loop
@@ -245,7 +245,7 @@ export default function MobileEdgeNodePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans max-w-md mx-auto shadow-2xl border-x border-slate-800">
+    <div className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans max-w-md mx-auto shadow-2xl border-x border-slate-800">
       {/* Top Header */}
       <header className="bg-[#002147] border-b-2 border-amber-400 px-4 py-3 sticky top-0 z-50">
         <div className="flex items-center justify-between">
@@ -260,10 +260,10 @@ export default function MobileEdgeNodePage() {
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <h1 className="text-xs font-black tracking-wider uppercase text-amber-400">
-                  Live Weather Sensor Node
+                  SIH 6073 Mobile Edge Node
                 </h1>
               </div>
-              <p className="text-[10px] text-slate-300">Smartphone Live Weather &amp; GPS Stream</p>
+              <p className="text-[10px] text-slate-300">Zero-Cost Crowdsourced Weather Network</p>
             </div>
           </div>
 
@@ -502,7 +502,7 @@ export default function MobileEdgeNodePage() {
           </div>
 
           <p className="text-[11px] text-slate-400">
-            Tap any button below to see how the system automatically distinguishes between real storms and broken sensors:
+            <strong>SIH Jury Demo:</strong> Tap any button below to see how our AI instantly distinguishes between real severe weather and broken hardware sensors.
           </p>
 
           <div className="grid grid-cols-2 gap-2 text-xs">

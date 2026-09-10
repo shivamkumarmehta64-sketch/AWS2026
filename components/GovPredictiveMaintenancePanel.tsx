@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { TelemetryPacket, calculatePredictiveSensorHealth, SensorHealthScorecard } from '@/lib/anomalyLogic';
-import { Wrench, ShieldAlert, CheckCircle2, TrendingDown, Clock, Activity, Cpu } from 'lucide-react';
+import { Wrench, Clock, Activity, Cpu } from 'lucide-react';
 
 interface Props {
   packets: TelemetryPacket[];

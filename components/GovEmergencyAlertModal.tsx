@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, Bell, AlertTriangle, ShieldCheck, CheckCircle2, Radio, Send, VolumeX, ShieldAlert, FileText, Smartphone } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Bell, Radio, VolumeX, FileText, Smartphone } from 'lucide-react';
 import { TelemetryPacket, generateCapAlert, EmergencyCapAlert } from '@/lib/anomalyLogic';
 
 interface Props {
@@ -23,13 +23,10 @@ export const GovEmergencyAlertModal: React.FC<Props> = ({
 }) => {
   const [alertType, setAlertType] = useState<'STORM' | 'FAULT'>('STORM');
 
-  if (!isOpen) return null;
-
-  // Create mock packet if none provided
-  const targetPkt = packet || {
+  const defaultPkt = useMemo<TelemetryPacket>(() => ({
     packetId: 'PKT-ALERT-SAMPLE',
     stationId: 'AWS-DEL-04',
-    timestamp: Date.now(),
+    timestamp: 1789000000000,
     timeIST: '14:32:10 IST',
     raw: { temperature: 27.2, pressure: 998.4, humidity: 92.0, windSpeedKph: 48.0, windDirectionDeg: 270, rainfallMm10min: 14.5 },
     imputed: { temperature: 27.2, pressure: 998.4, humidity: 92.0, windSpeedKph: 48.0, windDirectionDeg: 270, rainfallMm10min: 14.5, wasCorrected: false },
@@ -42,7 +39,11 @@ export const GovEmergencyAlertModal: React.FC<Props> = ({
     operationalAction: 'Dispatched',
     ticketId: 'TKT-ALERT-01',
     securitySeal: { hmacSha256: '0x8f2d...', antiReplayNonce: 104821, auditMerkleRoot: '0x7b...', geofenceStatus: 'VERIFIED_IN_BOUNDS', tamperStatus: 'AUTHENTIC' },
-  } as TelemetryPacket;
+  } as TelemetryPacket), [alertType]);
+
+  if (!isOpen) return null;
+
+  const targetPkt = packet || defaultPkt;
 
   const cap: EmergencyCapAlert = generateCapAlert(targetPkt, stationName, state);
 

@@ -149,11 +149,15 @@ Authorized RMC field engineers can verify the quality management system using th
 
 ## 6. Algorithmic Verification Test Suite
 
-Run the formal verification suite locally:
+Run the formal verification suites locally:
 ```bash
-npx tsx scripts/verify-detector.ts
+# 1. WMO Sensor Fault Detection Engine Test Suite (45 Tests)
+npx tsx scripts/verify-vayu-fault-engine.ts
+
+# 2. Heatwave & Severe Weather DSS Engine Test Suite (18 Tests)
+npx tsx scripts/verify-heatwave-engine.ts
 ```
-**Test Results**: 21/21 tests passed (100%), confirming compliance with WMO Pub No. 8 quality control limits.
+**Test Results**: 63/63 total tests passed (100%), confirming 100% compliance with WMO Pub No. 8 quality control limits, step rates, temporal persistence, convective front discrimination, and IMD heatwave criteria.
 
 ---
 

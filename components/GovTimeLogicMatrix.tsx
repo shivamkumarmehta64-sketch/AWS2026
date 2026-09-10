@@ -14,8 +14,7 @@ import {
   Play,
   HelpCircle,
   BarChart2,
-  Layers,
-  ArrowRight
+  Layers
 } from 'lucide-react';
 
 interface Props {

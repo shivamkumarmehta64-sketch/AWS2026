@@ -17,6 +17,42 @@ export interface LiveObservation {
 // In-memory cache for live station observations (60-second TTL)
 const liveCache: Map<string, { data: LiveObservation; expiry: number }> = new Map();
 
+function transformOpenMeteoCurrent(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  current: any,
+  stationId: string,
+  now: number
+): LiveObservation | null {
+  if (!current || current.temperature_2m === undefined) return null;
+
+  const temp = Math.round(Number(current.temperature_2m) * 10) / 10;
+  const press = Math.round(Number(current.surface_pressure) * 10) / 10;
+  const hum = Math.round(Number(current.relative_humidity_2m) * 10) / 10;
+  const windSpeed = current.wind_speed_10m !== undefined ? Math.round(Number(current.wind_speed_10m) * 10) / 10 : undefined;
+  const windDir = current.wind_direction_10m !== undefined ? Math.round(Number(current.wind_direction_10m)) : undefined;
+  const rain = current.precipitation !== undefined ? Math.round(Number(current.precipitation) * 10) / 10 : undefined;
+
+  return {
+    stationId,
+    temperature: temp,
+    pressure: press,
+    humidity: hum,
+    windSpeedKph: windSpeed,
+    windDirectionDeg: windDir,
+    rainfallMm10min: rain,
+    timestamp: now,
+    timeIST: new Date(now).toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }),
+    source: 'OPEN_METEO_PUBLIC_API',
+    isLive: true,
+  };
+}
+
 /**
  * Fetches real-time atmospheric measurements.
  * Automatically utilizes Weatherstack API when an API key is configured,
@@ -83,44 +119,14 @@ export async function fetchLiveStationObservation(
     }
 
     const json = await response.json();
-    const current = json?.current;
+    const observation = transformOpenMeteoCurrent(json?.current, station.stationId, now);
 
-    if (!current || current.temperature_2m === undefined) {
-      return null;
+    if (observation) {
+      liveCache.set(station.stationId, {
+        data: observation,
+        expiry: now + 60000,
+      });
     }
-
-    const temp = Math.round(Number(current.temperature_2m) * 10) / 10;
-    const press = Math.round(Number(current.surface_pressure) * 10) / 10;
-    const hum = Math.round(Number(current.relative_humidity_2m) * 10) / 10;
-    const windSpeed = current.wind_speed_10m !== undefined ? Math.round(Number(current.wind_speed_10m) * 10) / 10 : undefined;
-    const windDir = current.wind_direction_10m !== undefined ? Math.round(Number(current.wind_direction_10m)) : undefined;
-    const rain = current.precipitation !== undefined ? Math.round(Number(current.precipitation) * 10) / 10 : undefined;
-
-    const observation: LiveObservation = {
-      stationId: station.stationId,
-      temperature: temp,
-      pressure: press,
-      humidity: hum,
-      windSpeedKph: windSpeed,
-      windDirectionDeg: windDir,
-      rainfallMm10min: rain,
-      timestamp: now,
-      timeIST: new Date(now).toLocaleTimeString('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }),
-      source: 'OPEN_METEO_PUBLIC_API',
-      isLive: true,
-    };
-
-    // Cache for 60 seconds
-    liveCache.set(station.stationId, {
-      data: observation,
-      expiry: now + 60000,
-    });
 
     return observation;
   } catch {
@@ -184,41 +190,13 @@ export async function fetchBatchLiveObservations(
     for (let i = 0; i < unexpiredStations.length; i++) {
       const station = unexpiredStations[i];
       const entry = dataList[i];
-      const current = entry?.current;
+      const obs = transformOpenMeteoCurrent(entry?.current, station.stationId, now);
 
-      if (current && current.temperature_2m !== undefined) {
-        const temp = Math.round(Number(current.temperature_2m) * 10) / 10;
-        const press = Math.round(Number(current.surface_pressure) * 10) / 10;
-        const hum = Math.round(Number(current.relative_humidity_2m) * 10) / 10;
-        const windSpeed = current.wind_speed_10m !== undefined ? Math.round(Number(current.wind_speed_10m) * 10) / 10 : undefined;
-        const windDir = current.wind_direction_10m !== undefined ? Math.round(Number(current.wind_direction_10m)) : undefined;
-        const rain = current.precipitation !== undefined ? Math.round(Number(current.precipitation) * 10) / 10 : undefined;
-
-        const obs: LiveObservation = {
-          stationId: station.stationId,
-          temperature: temp,
-          pressure: press,
-          humidity: hum,
-          windSpeedKph: windSpeed,
-          windDirectionDeg: windDir,
-          rainfallMm10min: rain,
-          timestamp: now,
-          timeIST: new Date(now).toLocaleTimeString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          }),
-          source: 'OPEN_METEO_PUBLIC_API',
-          isLive: true,
-        };
-
+      if (obs) {
         liveCache.set(station.stationId, {
           data: obs,
           expiry: now + 60000,
         });
-
         result[station.stationId] = obs;
       }
     }

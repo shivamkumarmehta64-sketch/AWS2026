@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Sparkles, Loader2, Compass, Check, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Sparkles, Loader2, Compass, ArrowRight } from 'lucide-react';
 import { searchIndianDistricts, DistrictSearchResult, NOTABLE_INDIAN_EXTREMES, createDynamicStationProfile } from '@/lib/liveDistrictService';
 import { IMDStationProfile } from '@/lib/stationData';
 

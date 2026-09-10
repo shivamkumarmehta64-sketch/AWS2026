@@ -21,38 +21,12 @@ export async function GET(request: NextRequest) {
   const lon = searchParams.get('lon') || '77.206';
   const stationId = searchParams.get('stationId') || 'AWS-DEL-04';
   const requestedProvider = (searchParams.get('provider') || 'auto').toLowerCase() as SupportedWeatherProvider;
-  const userApiKey = searchParams.get('apiKey') || process.env.WEATHERSTACK_API_KEY || '';
+
 
   const observations: ProviderObservation[] = [];
 
-  // Helper 1: Weatherstack Fetcher
+  // Helper 1: Weatherstack Fetcher (Disabled for SIH to ensure zero-cost API key-less operation)
   const fetchWeatherstack = async (): Promise<ProviderObservation | null> => {
-    if (!userApiKey || userApiKey.trim().length === 0) return null;
-    try {
-      const url = `http://api.weatherstack.com/current?access_key=${encodeURIComponent(
-        userApiKey.trim()
-      )}&query=${encodeURIComponent(`${lat},${lon}`)}`;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.current && json.current.temperature !== undefined) {
-          return {
-            provider: 'WEATHERSTACK',
-            temperature: Number(json.current.temperature),
-            pressure: Number(json.current.pressure),
-            humidity: Number(json.current.humidity),
-            locationName: json.location?.name || `${lat}°N, ${lon}°E`,
-          };
-        }
-      }
-    } catch {
-      // Graceful fallback
-    }
     return null;
   };
 

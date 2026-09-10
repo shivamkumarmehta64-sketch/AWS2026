@@ -1,19 +1,14 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useAllDistricts, DistrictLiveState } from '@/lib/districtEngine';
+import { useAllDistricts } from '@/lib/districtEngine';
 import { getVayuEvents, VayuEventLogEntry, subscribeToVayuEvents } from '@/lib/vayuEventLog';
 import {
   ShieldAlert,
   BarChart3,
-  TrendingUp,
   Activity,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
   Pause,
   Play,
-  Filter,
   Layers,
   ChevronRight
 } from 'lucide-react';
@@ -26,8 +21,7 @@ interface Props {
 
 export const VayuNationalDashboard: React.FC<Props> = ({
   onSelectDistrict,
-  onSelectState,
-  language = 'en'
+  onSelectState
 }) => {
   const allDistricts = useAllDistricts();
   const [isFeedPaused, setIsFeedPaused] = useState(false);
@@ -46,19 +40,17 @@ export const VayuNationalDashboard: React.FC<Props> = ({
 
   // 1. TOP STATS ROW
   const stats = useMemo(() => {
-    let total = allDistricts.length;
+    const total = allDistricts.length;
     let healthy = 0;
     let degraded = 0;
     let critical = 0;
     let offline = 0;
-    let loading = 0;
 
     for (const d of allDistricts) {
       if (d.health === 'HEALTHY') healthy++;
       else if (d.health === 'DEGRADED') degraded++;
       else if (d.health === 'CRITICAL') critical++;
       else if (d.health === 'OFFLINE') offline++;
-      else loading++;
     }
 
     const live = healthy + degraded + critical;
@@ -145,40 +137,58 @@ export const VayuNationalDashboard: React.FC<Props> = ({
     <div className="space-y-4">
       {/* 1. TOP STATS ROW */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-white p-3 rounded-lg border-2 border-slate-200 shadow-xs">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Districts Monitored</div>
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs hover-lift transition-all">
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+            <span>Districts Monitored</span>
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+          </div>
           <div className="text-2xl font-extrabold text-[#002147] font-mono mt-1">{stats.total}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">All 28 States & 8 UTs</div>
+          <div className="text-[10px] text-slate-500 mt-0.5 font-medium">All 28 States &amp; 8 UTs</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border-2 border-emerald-200 shadow-xs">
-          <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Live & Healthy</div>
+        <div className="bg-white p-3.5 rounded-xl border border-emerald-200 shadow-xs hover-lift transition-all">
+          <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider flex items-center justify-between">
+            <span>Live &amp; Healthy</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 glow-emerald" />
+          </div>
           <div className="text-2xl font-extrabold text-emerald-600 font-mono mt-1">{stats.healthy}</div>
-          <div className="text-[10px] text-emerald-700 mt-0.5">WMO Flag 1 Verified</div>
+          <div className="text-[10px] text-emerald-700 mt-0.5 font-medium">WMO Flag 1 Verified</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border-2 border-amber-200 shadow-xs">
-          <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Active Faults</div>
+        <div className="bg-white p-3.5 rounded-xl border border-amber-200 shadow-xs hover-lift transition-all">
+          <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider flex items-center justify-between">
+            <span>Active Faults</span>
+            <span className="w-2 h-2 rounded-full bg-amber-500 glow-amber" />
+          </div>
           <div className="text-2xl font-extrabold text-amber-600 font-mono mt-1">{stats.activeFaults}</div>
-          <div className="text-[10px] text-amber-700 mt-0.5">Under Diagnostic Isolation</div>
+          <div className="text-[10px] text-amber-700 mt-0.5 font-medium">Under Diagnostic Isolation</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border-2 border-red-200 shadow-xs">
-          <div className="text-[11px] font-bold text-red-700 uppercase tracking-wider">Critical Alerts</div>
+        <div className="bg-white p-3.5 rounded-xl border border-red-200 shadow-xs hover-lift transition-all">
+          <div className="text-[11px] font-bold text-red-700 uppercase tracking-wider flex items-center justify-between">
+            <span>Critical Alerts</span>
+            <span className="w-2 h-2 rounded-full bg-red-600 glow-rose animate-pulse" />
+          </div>
           <div className="text-2xl font-extrabold text-red-600 font-mono mt-1">{stats.critical}</div>
-          <div className="text-[10px] text-red-700 mt-0.5">Immediate Field Work Order</div>
+          <div className="text-[10px] text-red-700 mt-0.5 font-medium">Immediate Field Work Order</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border-2 border-slate-300 shadow-xs">
-          <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Offline Stations</div>
+        <div className="bg-white p-3.5 rounded-xl border border-slate-300 shadow-xs hover-lift transition-all">
+          <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
+            <span>Offline Stations</span>
+            <span className="w-2 h-2 rounded-full bg-slate-400" />
+          </div>
           <div className="text-2xl font-extrabold text-slate-700 font-mono mt-1">{stats.offline}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">Comms link loss (&gt;15m)</div>
+          <div className="text-[10px] text-slate-500 mt-0.5 font-medium">Comms link loss (&gt;15m)</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border-2 border-blue-200 shadow-xs">
-          <div className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Data Coverage %</div>
+        <div className="bg-white p-3.5 rounded-xl border border-blue-200 shadow-xs hover-lift transition-all">
+          <div className="text-[11px] font-bold text-blue-700 uppercase tracking-wider flex items-center justify-between">
+            <span>Data Coverage %</span>
+            <span className="w-2 h-2 rounded-full bg-sky-500 glow-sky" />
+          </div>
           <div className="text-2xl font-extrabold text-blue-600 font-mono mt-1">{stats.coverage}%</div>
-          <div className="text-[10px] text-blue-700 mt-0.5">Open-Meteo Ingest Pipeline</div>
+          <div className="text-[10px] text-blue-700 mt-0.5 font-medium">Open-Meteo Ingest Pipeline</div>
         </div>
       </div>
 
@@ -369,14 +379,14 @@ export const VayuNationalDashboard: React.FC<Props> = ({
               <button
                 key={st.name}
                 onClick={() => onSelectState?.(st.name)}
-                className={`p-2.5 rounded border text-left transition-all ${
+                className={`p-2.5 rounded-lg border text-left hover-lift transition-all ${
                   isCrit
-                    ? 'bg-red-50 border-red-200 hover:border-red-400'
+                    ? 'bg-red-50 border-red-200 hover:border-red-400 hover:shadow-red-100'
                     : isDeg
-                    ? 'bg-amber-50 border-amber-200 hover:border-amber-400'
+                    ? 'bg-amber-50 border-amber-200 hover:border-amber-400 hover:shadow-amber-100'
                     : isOff
                     ? 'bg-slate-100 border-slate-300'
-                    : 'bg-emerald-50 border-emerald-200 hover:border-emerald-400'
+                    : 'bg-emerald-50 border-emerald-200 hover:border-emerald-400 hover:shadow-emerald-100'
                 }`}
               >
                 <div className="flex items-center justify-between">

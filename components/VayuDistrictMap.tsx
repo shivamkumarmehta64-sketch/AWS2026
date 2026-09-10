@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAllDistricts, prioritizeStateDistricts, DistrictLiveState } from '@/lib/districtEngine';
 import { DistrictHealthStatus } from '@/lib/sensorFaultEngine';
-import { evaluateIMDHeatwave, HeatwaveReport } from '@/lib/heatwaveEngine';
+import { evaluateIMDHeatwave } from '@/lib/heatwaveEngine';
 import {
   MapPin,
   Filter,
@@ -10,14 +10,8 @@ import {
   ZoomOut,
   RotateCcw,
   Activity,
-  AlertTriangle,
-  CheckCircle2,
-  AlertCircle,
-  HelpCircle,
-  Maximize2,
   Flame,
-  ShieldCheck,
-  Droplets
+  ShieldCheck
 } from 'lucide-react';
 
 

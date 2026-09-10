@@ -1,477 +1,280 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { IMD_AWS_STATIONS, getStationProfile } from '@/lib/stationData';
-import { nicWmoEngineInstance, TelemetryPacket, WorkOrderTicket, createWorkOrder, getInitialSeededDataset } from '@/lib/anomalyLogic';
-import { fetchLiveStationObservation, fetchBatchLiveObservations, LiveObservation } from '@/lib/liveWeatherService';
-import { GovHeader } from '@/components/GovHeader';
-import { GovNetworkStrip } from '@/components/GovNetworkStrip';
-import { GovNetworkMap } from '@/components/GovNetworkMap';
-import { GovObservationConsole } from '@/components/GovObservationConsole';
-import { GovAnomalyRegister } from '@/components/GovAnomalyRegister';
-import { GovNWPGatingPanel } from '@/components/GovNWPGatingPanel';
-import { GovTechnicianDrawer } from '@/components/GovTechnicianDrawer';
-import { GovInfoModals, ActiveModalType } from '@/components/GovInfoModals';
-import { GovDatasetReplayModal } from '@/components/GovDatasetReplayModal';
-import { GovMobileQRModal } from '@/components/GovMobileQRModal';
-import { GovLiveIndiaAutoTester } from '@/components/GovLiveIndiaAutoTester';
-import { GovIndiaDistrictSearch } from '@/components/GovIndiaDistrictSearch';
-import { GovPredictiveMaintenancePanel } from '@/components/GovPredictiveMaintenancePanel';
-import { GovEmergencyAlertModal } from '@/components/GovEmergencyAlertModal';
-import { GovJuryOrientationBanner } from '@/components/GovJuryOrientationBanner';
-import { GovTimeLogicMatrix } from '@/components/GovTimeLogicMatrix';
-import { VayuDistrictMap } from '@/components/VayuDistrictMap';
-import { VayuDistrictPanel } from '@/components/VayuDistrictPanel';
-import { VayuNationalDashboard } from '@/components/VayuNationalDashboard';
-import { GovHeatwaveDSSPanel } from '@/components/GovHeatwaveDSSPanel';
-import { startPoller, pausePoller } from '@/lib/vayuPoller';
-import { IMDStationProfile } from '@/lib/stationData';
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight, ShieldCheck, Activity, Cpu, CheckCircle, Sparkles, Zap, Radio, Globe } from 'lucide-react';
+import { AnimMasterCanvas } from '@/components/ui/AnimMasterCanvas';
+import { SkiperSpotlightCard, SkiperAnimatedCounter, SkiperBorderBeam } from '@/components/ui/SkiperUI';
+import { VengeanceDisplacementCard, VengeanceGlowBadge, VengeanceInteractiveGrid, VengeanceRadarPulse } from '@/components/ui/VengeanceUI';
 
+export default function LandingPage() {
+  const [isMobile, setIsMobile] = useState(false);
 
-export default function GovernmentAWSManagementPortal() {
-  const [selectedStationId, setSelectedStationId] = useState('AWS-DEL-04');
-  const [selectedVayuDistrictId, setSelectedVayuDistrictId] = useState<string | null>(null);
-  const [customStations, setCustomStations] = useState<Record<string, IMDStationProfile>>({});
-  const [isEmergencyAlertOpen, setIsEmergencyAlertOpen] = useState(false);
-  const [fontSizeLevel, setFontSizeLevel] = useState(0);
-  const [isHighContrast, setIsHighContrast] = useState(false);
-  const [language, setLanguage] = useState<'en' | 'hi'>('en');
-  const [activeModal, setActiveModal] = useState<ActiveModalType>(null);
-  const [isDatasetReplayOpen, setIsDatasetReplayOpen] = useState(false);
-  const [isMobileQROpen, setIsMobileQROpen] = useState(false);
-
-  // Initialize Vayu background poller
-  useEffect(() => {
-    startPoller();
-    return () => {
-      pausePoller();
-    };
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-
-  // Live Open-Meteo state
-  const [isLiveApiMode, setIsLiveApiMode] = useState(true);
-  const [liveObservation, setLiveObservation] = useState<LiveObservation | null>(null);
-  const [isSyncingLive, setIsSyncingLive] = useState(false);
-  const liveCacheRef = useRef<Record<string, LiveObservation>>({});
-
-  // Telemetry state — pre-seeded with deterministic initial data
-  const [initialData] = useState(() => getInitialSeededDataset());
-  const [stationPackets, setStationPackets] = useState<Record<string, TelemetryPacket[]>>(() => initialData.stationPackets);
-  const [latestPackets, setLatestPackets] = useState<Record<string, TelemetryPacket>>(() => initialData.latestPackets);
-  const [workOrders, setWorkOrders] = useState<WorkOrderTicket[]>(() => initialData.workOrders);
-  const [isPaused, setIsPaused] = useState(false);
-  const [, setTickCount] = useState(14);
-
-  // Stable references to prevent interval churn
-  const tickCountRef = useRef(14);
-  const liveObservationRef = useRef<LiveObservation | null>(liveObservation);
-  useEffect(() => { liveObservationRef.current = liveObservation; }, [liveObservation]);
-  const selectedStationIdRef = useRef(selectedStationId);
-  useEffect(() => { selectedStationIdRef.current = selectedStationId; }, [selectedStationId]);
-  const isLiveApiModeRef = useRef(isLiveApiMode);
-  useEffect(() => { isLiveApiModeRef.current = isLiveApiMode; }, [isLiveApiMode]);
-
-  // Live Open-Meteo batch sync
-  const syncLiveWeather = useCallback(async (stationId: string) => {
-    setIsSyncingLive(true);
-    try {
-      const profile = getStationProfile(stationId);
-      const obs = await fetchLiveStationObservation(profile);
-      if (obs) { setLiveObservation(obs); liveCacheRef.current[stationId] = obs; }
-
-      const batch = await fetchBatchLiveObservations(IMD_AWS_STATIONS);
-      if (batch && Object.keys(batch).length > 0) {
-        liveCacheRef.current = { ...liveCacheRef.current, ...batch };
-        if (batch[stationId]) setLiveObservation(batch[stationId]);
-      }
-    } catch { /* Graceful fallback */ } finally { setIsSyncingLive(false); }
-  }, []);
-
-  useEffect(() => {
-    if (!isLiveApiMode) return;
-    const t = setTimeout(() => {
-      syncLiveWeather(selectedStationId);
-    }, 0);
-    return () => clearTimeout(t);
-  }, [selectedStationId, isLiveApiMode, syncLiveWeather]);
-
-  useEffect(() => {
-    if (!isLiveApiMode) return;
-    const t = setInterval(() => syncLiveWeather(selectedStationId), 30000);
-    return () => clearInterval(t);
-  }, [isLiveApiMode, selectedStationId, syncLiveWeather]);
-
-  // Telemetry ingest loop (every 2.5s) — optimized with stable callback & spatial cross-validation
-  const processNextTick = useCallback(() => {
-    tickCountRef.current += 1;
-    const currentTick = tickCountRef.current;
-    setTickCount(currentTick);
-    const now = Date.now();
-    const updatedLatest: Record<string, TelemetryPacket> = {};
-    const newTickets: WorkOrderTicket[] = [];
-
-    // Phase 1: Ingest next observations
-    for (const station of IMD_AWS_STATIONS) {
-      if (station.status === 'SCHEDULED_CALIBRATION') continue;
-      const baseline = isLiveApiModeRef.current
-        ? (liveCacheRef.current[station.stationId] || (station.stationId === selectedStationIdRef.current ? liveObservationRef.current : null))
-        : undefined;
-      const pkt = nicWmoEngineInstance.generatePacket(station.stationId, now, currentTick, baseline || undefined);
-      updatedLatest[station.stationId] = pkt;
-    }
-
-    // Phase 2: Spatial KNN cross-validation against national cohort for any flagged observation
-    for (const station of IMD_AWS_STATIONS) {
-      const pkt = updatedLatest[station.stationId];
-      if (!pkt) continue;
-      if (pkt.classification !== 'NOMINAL_OPERATION') {
-        pkt.spatialValidation = nicWmoEngineInstance.spatialCrossValidate(station.stationId, pkt.classification, updatedLatest);
-        newTickets.push(createWorkOrder(pkt));
-      }
-    }
-
-    setStationPackets(prev => {
-      const next = { ...prev };
-      for (const [stId, pkt] of Object.entries(updatedLatest)) {
-        const buf = [...(next[stId] || []), pkt];
-        if (buf.length > 30) buf.shift();
-        next[stId] = buf;
-      }
-      return next;
-    });
-
-    setLatestPackets(prev => ({ ...prev, ...updatedLatest }));
-    if (newTickets.length > 0) setWorkOrders(prev => [...newTickets, ...prev].slice(0, 50));
-  }, []);
-
-  useEffect(() => {
-    if (isPaused) return;
-    const t = setInterval(processNextTick, 2500);
-    return () => clearInterval(t);
-  }, [isPaused, processNextTick]);
-
-  // Mobile node packet sync
-  const lastMobileSyncRef = useRef<number>(0);
-
-  const ingestExternalPacket = useCallback((pkt: TelemetryPacket) => {
-    // If packet is from a connected mobile phone, auto-provision profile in customStations
-    if (pkt.stationId.startsWith('AWS-MOB')) {
-      const meta = (pkt as unknown as { mobileMetadata?: { lat?: number; lon?: number; deviceName?: string } }).mobileMetadata;
-      setCustomStations(prev => {
-        if (!prev[pkt.stationId]) {
-          const lat = meta?.lat || 28.6139;
-          const lon = meta?.lon || 77.2090;
-          const devName = meta?.deviceName || 'Smartphone Field Sensor';
-          const newProfile: IMDStationProfile = {
-            stationId: pkt.stationId,
-            name: `${devName} (${pkt.stationId})`,
-            hindiName: `मोबाइल वेधशाला (${pkt.stationId})`,
-            state: 'Connected Live Mobile Sensor',
-            latitude: lat,
-            longitude: lon,
-            elevationM: 216,
-            rmcDivision: 'Field Mobile Mesh Grid',
-            wmoBlockNo: '49999',
-            sensorMetadata: {
-              tempSensor: 'Smartphone Battery/Ambient Thermistor & Open-Meteo',
-              pressureSensor: 'Hardware Silicon Barometer (BMP280 / W3C Ambient)',
-              humiditySensor: 'High-Res Polymer Capacitive / Open-Meteo',
-              dataloggerModel: 'Mobile PWA Telemetry Edge Transmitter',
-              telemetryUplink: '4G/5G HTTPS DCP Telemetry / WebSocket',
-              batteryVoltage: '3.85 V (Li-ion Internal)',
-              lastCalibDate: 'Auto-Calibrated Real-Time',
-              calibCertNo: `CC-IMD-MOB-${pkt.stationId}`,
-            },
-            baseline: { tempMean: 29.5, pressureMean: 1008.0, humidityMean: 65.0, windMean: 12.0, windDirMean: 220 },
-            status: 'OPERATIONAL',
-          };
-          return { ...prev, [pkt.stationId]: newProfile };
-        }
-        return prev;
-      });
-    }
-
-    setLatestPackets(prev => ({ ...prev, [pkt.stationId]: pkt }));
-    setStationPackets(prev => {
-      const buf = [...(prev[pkt.stationId] || []), pkt];
-      if (buf.length > 30) buf.shift();
-      return { ...prev, [pkt.stationId]: buf };
-    });
-    if (pkt.classification !== 'NOMINAL_OPERATION') {
-      setWorkOrders(prev => [createWorkOrder(pkt, 'IMD-MOB-2026'), ...prev].slice(0, 50));
-    }
-  }, []);
-
-  // BroadcastChannel listener
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    const ch = new BroadcastChannel('imd_naws_telemetry_stream');
-    ch.onmessage = (e) => { if (e.data?.type === 'MOBILE_PACKET_INGEST' && e.data?.packet) ingestExternalPacket(e.data.packet); };
-    return () => ch.close();
-  }, [ingestExternalPacket]);
-
-  // Cross-device poll
-  useEffect(() => {
-    if (lastMobileSyncRef.current === 0) lastMobileSyncRef.current = Date.now();
-    const t = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/telemetry?latest=true&since=${lastMobileSyncRef.current}`);
-        if (res.ok) {
-          const json = await res.json();
-          json.packets?.forEach((p: TelemetryPacket) => {
-            ingestExternalPacket(p);
-            if (p.timestamp > lastMobileSyncRef.current) lastMobileSyncRef.current = p.timestamp;
-          });
-        }
-      } catch { /* Silent */ }
-    }, 2000);
-    return () => clearInterval(t);
-  }, [ingestExternalPacket]);
-
-  // Accessibility
-  const handleFontSize = (delta: number) => {
-    const next = delta === 0 ? 0 : Math.max(-1, Math.min(2, fontSizeLevel + delta));
-    setFontSizeLevel(next);
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.fontSize = ({ [-1]: '14px', 0: '16px', 1: '18px', 2: '20px' } as Record<number, string>)[next] || '16px';
-    }
-  };
-
-  // Memoized network metrics & station selections
-  const { opTotal, critCount, stormCount, driftCount, qIndex } = useMemo(() => {
-    const total = IMD_AWS_STATIONS.filter(s => s.status !== 'SCHEDULED_CALIBRATION').length;
-    const latestList = Object.values(latestPackets);
-    const crit = latestList.filter(p => p.alertLevel === 'LEVEL_4_RED').length;
-    const storm = latestList.filter(p => p.classification === 'GENUINE_CONVECTIVE_EVENT').length;
-    const drift = latestList.filter(p => p.classification === 'CALIBRATION_DRIFT').length;
-    const q = total > 0 ? Math.max(75, Math.min(100, Math.round(((total - crit) / total) * 1000) / 10)) : 95.0;
-    return { opTotal: total, critCount: crit, stormCount: storm, driftCount: drift, qIndex: q };
-  }, [latestPackets]);
-
-  const connectedMobileCount = useMemo(() => {
-    return Object.keys(latestPackets).filter(id => id.startsWith('AWS-MOB')).length;
-  }, [latestPackets]);
-
-  const activeStation = useMemo(() => customStations[selectedStationId] || getStationProfile(selectedStationId), [customStations, selectedStationId]);
-  const activeHistory = useMemo(() => stationPackets[selectedStationId] || [], [stationPackets, selectedStationId]);
-
-  const handleSelectCustomProfile = useCallback((profile: IMDStationProfile) => {
-    setCustomStations(prev => ({ ...prev, [profile.stationId]: profile }));
-    setSelectedStationId(profile.stationId);
-  }, []);
-
-  const triggerAndTick = (fn: (id: string) => void, id: string) => { fn(id); if (isPaused) processNextTick(); };
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] text-slate-900 flex flex-col font-sans transition-all duration-150">
-      <GovHeader
-        fontSizeLevel={fontSizeLevel} onFontSizeChange={handleFontSize}
-        isHighContrast={isHighContrast}
-        onToggleContrast={() => setIsHighContrast(prev => { const n = !prev; if (n) document.body.classList.add('high-contrast'); else document.body.classList.remove('high-contrast'); return n; })}
-        language={language} onToggleLanguage={() => setLanguage(prev => prev === 'en' ? 'hi' : 'en')}
-        onOpenModal={setActiveModal}
-        onOpenDatasetReplay={() => setIsDatasetReplayOpen(true)}
-        onOpenMobileQR={() => setIsMobileQROpen(true)}
-        isLiveApiMode={isLiveApiMode}
-      />
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-sky-500/30 overflow-x-hidden relative">
+      {/* Interactive Canvas Mesh from AnimMaster Lib Engine */}
+      <AnimMasterCanvas colorScheme="sky" spacing={isMobile ? 50 : 36} interactiveRadius={isMobile ? 90 : 160} />
 
-      <GovNetworkStrip
-        totalStations={IMD_AWS_STATIONS.length + Object.keys(customStations).length} onlineStations={opTotal + Object.keys(customStations).length} qualityIndex={qIndex}
-        ingestInterval="2.5s" anomalyTally={{ critical: critCount, convective: stormCount, drift: driftCount }}
-        language={language}
-      />
 
-      <main className="flex-1 max-w-[1750px] w-full mx-auto px-4 lg:px-8 py-4 space-y-4">
-        {/* Jury & Public Orientation Guide (Why this platform exists & how to test) */}
-        <GovJuryOrientationBanner
-          language={language}
-          onOpenMobileQR={() => setIsMobileQROpen(true)}
-          connectedMobileCount={connectedMobileCount}
-        />
+      {/* Navbar */}
+      <nav className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/30">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-sky-300">
+                NAWS-QMS
+              </span>
+              <span className="text-[10px] text-sky-400 font-semibold tracking-wider uppercase -mt-1">
+                MoES • IMD Grid
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <VengeanceGlowBadge label="WMO Pub 8 Compliant" variant="emerald" className="hidden sm:inline-flex" />
 
-        {/* Automated Live India Citizen & Sensor Test (Instant Auto-Check for anyone in India) */}
-        <GovLiveIndiaAutoTester
-          language={language}
-          onOpenMobileQR={() => setIsMobileQROpen(true)}
-          onSelectStation={setSelectedStationId}
-        />
-
-        {/* Universal All-India District & City Search (700+ Indian Districts) */}
-        <GovIndiaDistrictSearch
-          onSelectStationProfile={handleSelectCustomProfile}
-          selectedStationId={selectedStationId}
-          language={language}
-        />
-
-        {/* PROJECT VAYU — NATIONAL 766 DISTRICT OBSERVATIONAL & FAULT PLATFORM (SIH26073) */}
-        <div className="space-y-4 pt-2">
-          {/* Vayu Command Center & National Anomaly Dashboard */}
-          <VayuNationalDashboard
-            onSelectDistrict={(distId) => setSelectedVayuDistrictId(distId)}
-            language={language}
-          />
-
-          {/* Vayu All-India 766 District GIS Health Map */}
-          <VayuDistrictMap
-            selectedDistrictId={selectedVayuDistrictId}
-            onSelectDistrict={(distId) => setSelectedVayuDistrictId(distId)}
-            language={language}
-          />
-
-          {/* Vayu Detailed 12-Parameter District Diagnostic Panel */}
-          {selectedVayuDistrictId && (
-            <VayuDistrictPanel
-              districtId={selectedVayuDistrictId}
-              onClose={() => setSelectedVayuDistrictId(null)}
-              onSelectDistrict={(distId) => setSelectedVayuDistrictId(distId)}
-              language={language}
-            />
-          )}
-
-          {/* IMD Official Heatwave Decision Support System (DSS) & Climatological Departure Engine */}
-          <GovHeatwaveDSSPanel
-            selectedDistrictId={selectedVayuDistrictId}
-            onSelectDistrict={(distId) => setSelectedVayuDistrictId(distId)}
-            language={language}
-          />
+            <Link
+              href="/dashboard"
+              className="group relative inline-flex items-center justify-center px-5 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-blue-600 rounded-full hover:from-sky-400 hover:to-blue-500 transition-all duration-300 shadow-lg shadow-sky-500/25 gap-2"
+            >
+              Launch QMS Portal <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
         </div>
+      </nav>
 
-        {/* Two-column layout: map left, console right on wide screens */}
-        <div className="grid grid-cols-1 xl:grid-cols-[540px_1fr] gap-4">
-
-          <GovNetworkMap
-            latestPackets={latestPackets}
-            selectedStationId={selectedStationId}
-            onSelectStation={setSelectedStationId}
-            onSelectCustomDistrict={handleSelectCustomProfile}
-            customStations={customStations}
-            language={language}
-          />
-          <GovObservationConsole
-            selectedStation={activeStation} onSelectStation={setSelectedStationId}
-            packets={activeHistory} language={language}
-            isLiveApiMode={isLiveApiMode} onToggleLiveApiMode={() => setIsLiveApiMode(p => !p)}
-            liveStatusInfo={liveObservation} isSyncingLive={isSyncingLive}
-            onManualSync={() => syncLiveWeather(selectedStationId)}
-          />
-        </div>
-
-        {/* Multi-Horizon Temporal Logic Engine (SIH 6073 Core Innovation) */}
-        <GovTimeLogicMatrix
-          language={language}
-          onSimulateCase={(caseId) => {
-            switch (caseId) {
-              case 'case_roc_spike':
-                triggerAndTick(nicWmoEngineInstance.triggerThermistorSpike.bind(nicWmoEngineInstance), selectedStationId);
-                break;
-              case 'case_convective_storm':
-                triggerAndTick(nicWmoEngineInstance.triggerConvectiveStorm.bind(nicWmoEngineInstance), selectedStationId);
-                break;
-              case 'case_frozen_sensor':
-                triggerAndTick(nicWmoEngineInstance.triggerWireDisconnectFreeze.bind(nicWmoEngineInstance), selectedStationId);
-                break;
-              case 'case_calibration_drift':
-                triggerAndTick(nicWmoEngineInstance.triggerBarometerDrift.bind(nicWmoEngineInstance), selectedStationId);
-                break;
-              case 'case_packet_slot_loss':
-                triggerAndTick(nicWmoEngineInstance.triggerPacketLoss.bind(nicWmoEngineInstance), selectedStationId);
-                break;
-              case 'case_solar_diurnal':
-                triggerAndTick(nicWmoEngineInstance.triggerThermistorSpike.bind(nicWmoEngineInstance), selectedStationId);
-                break;
-              default:
-                break;
-            }
-          }}
-        />
-
-        {/* Predictive Sensor Maintenance & RUL Degradation Panel */}
-
-        <GovPredictiveMaintenancePanel
-          packets={activeHistory}
-          stationName={activeStation.name}
-          language={language}
-        />
-
-        <GovNWPGatingPanel latestPackets={latestPackets} language={language} />
-
-        <GovAnomalyRegister
-          workOrders={workOrders}
-          language={language}
-          onOpenMethodology={() => setActiveModal('methodology')}
-          onOpenEmergencyAlert={() => setIsEmergencyAlertOpen(true)}
-        />
-      </main>
-
-      <GovTechnicianDrawer
-        selectedStationId={selectedStationId}
-        onTriggerThermistorSpike={id => triggerAndTick(nicWmoEngineInstance.triggerThermistorSpike.bind(nicWmoEngineInstance), id)}
-        onTriggerWireDisconnectFreeze={id => triggerAndTick(nicWmoEngineInstance.triggerWireDisconnectFreeze.bind(nicWmoEngineInstance), id)}
-        onTriggerBarometerDrift={id => triggerAndTick(nicWmoEngineInstance.triggerBarometerDrift.bind(nicWmoEngineInstance), id)}
-        onTriggerConvectiveStorm={id => triggerAndTick(nicWmoEngineInstance.triggerConvectiveStorm.bind(nicWmoEngineInstance), id)}
-        onTriggerPacketLoss={id => triggerAndTick(nicWmoEngineInstance.triggerPacketLoss.bind(nicWmoEngineInstance), id)}
-        onResetToNominal={id => triggerAndTick(() => nicWmoEngineInstance.resetToNominal(id), id || selectedStationId)}
-        isPaused={isPaused} onTogglePause={() => setIsPaused(!isPaused)}
-      />
-
-      <GovInfoModals activeModal={activeModal} onClose={() => setActiveModal(null)} language={language} />
-      <GovDatasetReplayModal isOpen={isDatasetReplayOpen} onClose={() => setIsDatasetReplayOpen(false)} language={language} />
-      <GovMobileQRModal isOpen={isMobileQROpen} onClose={() => setIsMobileQROpen(false)} language={language} />
-      <GovEmergencyAlertModal
-        isOpen={isEmergencyAlertOpen}
-        onClose={() => setIsEmergencyAlertOpen(false)}
-        packet={latestPackets[selectedStationId] || null}
-        stationName={activeStation.name}
-        state={activeStation.state}
-        language={language}
-      />
-
-      <footer className="mt-8 bg-[#002147] text-slate-300 border-t-4 border-[#FF9933] text-xs">
-        <div className="max-w-[1750px] mx-auto px-4 lg:px-8 py-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pb-6 border-b border-slate-700">
-            {[
-              { title: language === 'hi' ? 'मौसम सेवाएं' : 'Observational Network', items: ['Automatic Weather Stations (AWS)', 'Agro-Meteorological Network', 'INSAT-3D Meteorological DCP Link', 'Doppler Weather Radar (DWR) Grid'] },
-              { title: language === 'hi' ? 'गुणवत्ता आश्वासन' : 'Quality Assurance & Standards', items: ['WMO-No. 8 Weather Instrument Standards', 'NABL Calibration Traceability', 'ISO 9001:2015 QC Procedures', 'Real-Time Automated Data Verification'] },
-              { title: language === 'hi' ? 'क्षेत्रीय मौसम विज्ञान केंद्र' : 'Regional Met Centres (RMC)', items: ['RMC New Delhi (Northern Region)', 'RMC Mumbai (Western Region)', 'RMC Kolkata (Eastern Region)', 'RMC Chennai (Southern Region)'] },
-            ].map(col => (
-              <div key={col.title}>
-                <div className="font-bold text-white mb-1.5 uppercase tracking-wider text-[11px]">{col.title}</div>
-                <ul className="space-y-1 text-slate-400 text-[11px]">{col.items.map(i => <li key={i}>{i}</li>)}</ul>
+      {/* Hero Section with Vengeance & Skiper UI Component Deck */}
+      <section className="relative overflow-hidden pt-20 pb-28">
+        <VengeanceInteractiveGrid />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            {/* Hero Left Content */}
+            <div className="lg:col-span-7 text-left space-y-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-950/80 border border-sky-500/30 text-sky-300 text-xs font-semibold backdrop-blur-md">
+                <VengeanceRadarPulse size={16} />
+                Smart India Hackathon 2026 • SIH 6073 Solution
               </div>
-            ))}
-            <div>
-              <div className="font-bold text-white mb-1.5 uppercase tracking-wider text-[11px]">
-                {language === 'hi' ? 'प्रणाली वास्तुकला' : 'System Architecture & Innovation'}
-              </div>
-              <p className="text-slate-400 text-[11px] leading-relaxed">
-                National Automatic Weather Station Quality Management System — Real-time automated quality control, AI-powered sensor fault isolation, and reliable weather feeds for India.
+              <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-[1.1]">
+                Next-Gen Real-Time <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-400 to-indigo-300">
+                  Weather Quality Management
+                </span>
+              </h1>
+              <p className="text-lg text-slate-300 max-w-xl leading-relaxed">
+                An enterprise-grade, zero-cost, real-time quality control and anomaly discrimination platform for India&apos;s 750+ Automatic Weather Stations grid.
               </p>
-              <button onClick={() => setActiveModal('architecture')} className="mt-2 text-sky-300 hover:text-white underline text-[11px] font-semibold">
-                {language === 'hi' ? 'पूर्ण प्रणाली वास्तुकला पढ़ें →' : 'Read Full Scalability Architecture →'}
-              </button>
+
+              {/* Primary CTA Buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center justify-center px-8 py-4 text-base font-extrabold text-white bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 rounded-full hover:from-sky-400 hover:to-indigo-500 transition-all shadow-xl shadow-sky-500/25 gap-2.5 cursor-pointer group"
+                >
+                  <Zap className="w-5 h-5 fill-current text-white group-hover:scale-110 transition-transform" />
+                  <span>Launch QMS Command Portal</span>
+                </Link>
+
+                <a
+                  href="#architecture"
+                  className="inline-flex items-center justify-center px-6 py-4 text-sm font-semibold text-slate-300 bg-slate-900/90 border border-slate-700/80 rounded-full hover:bg-slate-800 hover:text-white transition-colors"
+                >
+                  Explore System Architecture
+                </a>
+              </div>
+
+              {/* Real-time Metric Highlights Powered by Skiper Animated Counters */}
+              <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-800/80">
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-sky-400">
+                    <SkiperAnimatedCounter value={766} decimals={0} suffix="+" />
+                  </div>
+                  <div className="text-xs text-slate-400 font-medium">Districts Covered</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-emerald-400">
+                    <SkiperAnimatedCounter value={99.8} decimals={1} suffix="%" />
+                  </div>
+                  <div className="text-xs text-slate-400 font-medium">QC Reliability</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-amber-400">
+                    <SkiperAnimatedCounter value={2.5} decimals={1} suffix="s" />
+                  </div>
+                  <div className="text-xs text-slate-400 font-medium">Telemetry Rate</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Hero Right: Interactive 3D Displacement Card Deck (Vengeance UI) */}
+            <div className="lg:col-span-5">
+              <VengeanceDisplacementCard glowColor="rgba(56, 189, 248, 0.25)" className="p-6">
+                <SkiperBorderBeam size={220} duration={6} colorFrom="#38bdf8" colorTo="#818cf8" />
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Radio className="w-5 h-5 text-sky-400 animate-pulse" />
+                    <span className="font-bold text-white text-sm">AWS-DEL-04 (Safdarjung)</span>
+                  </div>
+                  <VengeanceGlowBadge label="NOMINAL (QC 1)" variant="emerald" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 py-6">
+                  <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
+                    <span className="text-xs text-slate-400">Temperature</span>
+                    <div className="text-xl font-bold text-white mt-1">
+                      <SkiperAnimatedCounter value={32.4} suffix=" °C" />
+                    </div>
+                  </div>
+                  <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
+                    <span className="text-xs text-slate-400">Atm. Pressure</span>
+                    <div className="text-xl font-bold text-sky-300 mt-1">
+                      <SkiperAnimatedCounter value={1008.2} suffix=" hPa" />
+                    </div>
+                  </div>
+                  <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
+                    <span className="text-xs text-slate-400">Rel. Humidity</span>
+                    <div className="text-xl font-bold text-emerald-300 mt-1">
+                      <SkiperAnimatedCounter value={68.5} suffix=" %" />
+                    </div>
+                  </div>
+                  <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
+                    <span className="text-xs text-slate-400">Wind Speed</span>
+                    <div className="text-xl font-bold text-amber-300 mt-1">
+                      <SkiperAnimatedCounter value={14.2} suffix=" km/h" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-sky-950/40 rounded-xl border border-sky-500/20 text-xs text-sky-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-sky-400" />
+                    <span>Convective Storm Discrimination</span>
+                  </div>
+                  <span className="font-bold text-sky-400">PASS (No Fault)</span>
+                </div>
+              </VengeanceDisplacementCard>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
-            <div>© 2026 National Automatic Weather Station Quality Management System (NAWS-QMS) • Innovation Prototype</div>
-            <div className="flex items-center gap-4 flex-wrap">
-              {([
-                ['legal', 'Legal & Privacy (DPDPA 2023)'],
-                ['architecture', 'System Design & Scalability'],
-                ['methodology', 'Quality Control Rules'],
-                ['accessibility', 'Accessibility Statement'],
-                ['provenance', 'Data Sources & Disclosure'],
-              ] as const).map(([key, label], i) => (
-                <React.Fragment key={key}>
-                  {i > 0 && <span>•</span>}
-                  <button onClick={() => setActiveModal(key)} className="hover:underline hover:text-white cursor-pointer">{label}</button>
-                </React.Fragment>
-              ))}
-            </div>
+        </div>
+      </section>
+
+      {/* Problem & Solution with Skiper UI Spotlight Cards */}
+      <section className="py-24 bg-slate-900/60 border-y border-slate-800/80 relative z-10 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-12 items-stretch">
+            {/* Challenge */}
+            <SkiperSpotlightCard className="p-8 bg-slate-950/80 border-slate-800" spotlightColor="rgba(244, 63, 94, 0.12)" borderColor="rgba(244, 63, 94, 0.3)">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 text-xs font-bold mb-6 border border-rose-500/20">
+                The Challenge • SIH 6073
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-4">Met Data Anomaly Dilemma</h2>
+              <p className="text-slate-300 leading-relaxed mb-6 text-sm">
+                Automatic Weather Stations (AWS) occasionally transmit erroneous data due to thermistor spikes, barometer drift, or frozen sensors. Distinguishing genuine severe storms from sensor glitches is extremely challenging.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'Wasted technician dispatches due to false alarms.',
+                  'Corrupted observations poison NWP forecast models.',
+                  'Need for zero-latency WMO validation at the edge.',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-300 text-sm">
+                    <div className="p-1 rounded-full bg-rose-500/20 text-rose-400">
+                      <Activity className="w-3.5 h-3.5" />
+                    </div>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </SkiperSpotlightCard>
+
+            {/* Solution */}
+            <SkiperSpotlightCard className="p-8 bg-slate-950/80 border-slate-800" spotlightColor="rgba(16, 185, 129, 0.12)" borderColor="rgba(16, 185, 129, 0.3)">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold mb-6 border border-emerald-500/20">
+                Our Solution • NAWS-QMS
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-4">Autonomous Edge Verification</h2>
+              <p className="text-slate-300 leading-relaxed mb-6 text-sm">
+                A zero-cost, edge-compatible pipeline running WMO-compliant physical bounds, rate-of-change, temporal persistence, and spatial cross-validation logic.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  'WMO Flags 1-5',
+                  'Convective Logic',
+                  'Explainable AI',
+                  'NWP Reconstruction',
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span className="font-semibold text-slate-200 text-xs">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </SkiperSpotlightCard>
           </div>
-          <div className="text-[10px] text-slate-400 border-t border-slate-700/80 pt-2 text-center">
-            Statutory Notice: NAWS-QMS is an academic innovation prototype for Smart India Hackathon (Problem Statement SIH26073). It is not an official portal of the India Meteorological Department (IMD) or Ministry of Earth Sciences. For official life-safety warnings, visit <a href="https://mausam.imd.gov.in" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">mausam.imd.gov.in</a>.
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section id="architecture" className="py-24 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <VengeanceGlowBadge label="Built for MoES / IMD Grid" variant="blue" />
+            <h2 className="text-3xl font-extrabold text-white">Core Architectural Innovations</h2>
+            <p className="text-slate-400 text-sm">
+              Strictly compliant with World Meteorological Organization (WMO Pub No. 8) standards.
+            </p>
           </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: <Cpu className="w-6 h-6 text-sky-400" />,
+                title: 'Edge-Side Processing',
+                desc: 'Runs autonomously with zero external API costs, providing edge telemetry validation instantly.',
+              },
+              {
+                icon: <Activity className="w-6 h-6 text-amber-400" />,
+                title: 'Convective Discrimination',
+                desc: 'Couples pressure drops, humidity spikes, and temperature dips to isolate true severe weather.',
+              },
+              {
+                icon: <ShieldCheck className="w-6 h-6 text-emerald-400" />,
+                title: 'WMO Data Reconstruction',
+                desc: 'Imputes corrupt sensor slots using weighted moving averages to feed clean data into NWP models.',
+              },
+            ].map((feat, i) => (
+              <SkiperSpotlightCard key={i} className="p-8 bg-slate-900/80 border-slate-800">
+                <div className="w-12 h-12 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center mb-6 shadow-inner">
+                  {feat.icon}
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">{feat.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{feat.desc}</p>
+              </SkiperSpotlightCard>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+
+      {/* Footer */}
+      <footer className="bg-slate-950 text-slate-400 py-12 border-t border-slate-800/80 relative z-10 text-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+          <div className="w-10 h-10 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-center mx-auto shadow-md">
+            <Globe className="w-5 h-5 text-sky-400" />
+          </div>
+          <p className="text-slate-200 font-semibold text-sm">NAWS-QMS • SIH 6073 Submission</p>
+          <p className="text-slate-400 max-w-xl mx-auto">
+            National Automatic Weather Station Quality Management System • Ministry of Earth Sciences (MoES) / IMD
+          </p>
         </div>
       </footer>
     </div>

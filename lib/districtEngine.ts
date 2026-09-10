@@ -15,7 +15,7 @@ import {
   DistrictHealthStatus,
   DistrictMeta
 } from './sensorFaultEngine';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export type DistrictFetchStatus = 'pending' | 'loading' | 'live' | 'stale' | 'error';
 
@@ -39,7 +39,7 @@ interface QueueItem {
   addedAt: number;
 }
 
-let fetchQueue: QueueItem[] = [];
+const fetchQueue: QueueItem[] = [];
 const queueStatus = new Map<string, DistrictFetchStatus>();
 let isQueueWorkerRunning = false;
 const listeners = new Set<() => void>();

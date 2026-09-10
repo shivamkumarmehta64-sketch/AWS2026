@@ -12,9 +12,7 @@ import {
   CommsChecks,
   StatisticalChecks,
   IndiaContextChecks,
-  runAllFaultChecks,
   LiveDistrictReading,
-  DistrictMeta,
   HistoricalReading
 } from '../lib/sensorFaultEngine';
 

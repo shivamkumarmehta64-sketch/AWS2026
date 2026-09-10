@@ -10,7 +10,7 @@ import {
   getClimatologicalNormalMaxTemp
 } from '../lib/heatwaveEngine';
 import { IndiaDistrict } from '../lib/india766Districts';
-import { LiveDistrictReading, HistoricalReading } from '../lib/sensorFaultEngine';
+import { LiveDistrictReading } from '../lib/sensorFaultEngine';
 
 let totalTests = 0;
 let passedTests = 0;

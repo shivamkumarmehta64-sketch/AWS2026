@@ -13,18 +13,11 @@ import {
   Wind,
   CloudRain,
   Eye,
-  Sun,
   ShieldAlert,
-  CheckCircle2,
-  AlertTriangle,
   Download,
   GitCompare,
-  TrendingUp,
-  TrendingDown,
   Compass,
-  Zap,
   Activity,
-  ChevronRight,
   Flame
 } from 'lucide-react';
 import { evaluateIMDHeatwave } from '@/lib/heatwaveEngine';
@@ -33,15 +26,14 @@ import { evaluateIMDHeatwave } from '@/lib/heatwaveEngine';
 interface Props {
   districtId: string;
   onClose: () => void;
-  onSelectDistrict?: (id: string) => void;
+  onSelectDistrictForCompare?: (districtId: string) => void;
   language?: 'en' | 'hi';
 }
 
 export const VayuDistrictPanel: React.FC<Props> = ({
   districtId,
   onClose,
-  onSelectDistrict,
-  language = 'en'
+  onSelectDistrictForCompare
 }) => {
   const { district, reading, history, qcReport, health, refresh, lastUpdated } = useDistrictData(districtId);
   const allDistricts = useAllDistricts();
@@ -233,7 +225,7 @@ export const VayuDistrictPanel: React.FC<Props> = ({
             {nearbyDistricts.map(nb => (
               <div
                 key={nb.district.id}
-                onClick={() => onSelectDistrict?.(nb.district.id)}
+                onClick={() => onSelectDistrictForCompare?.(nb.district.id)}
                 className="bg-white p-2.5 rounded border border-sky-200 hover:border-[#FF9933] cursor-pointer shadow-2xs"
               >
                 <div className="flex items-center justify-between text-xs">

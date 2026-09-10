@@ -1,25 +1,30 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Clock, Globe, Eye, BookOpen, Layers, Server, FileText, Smartphone } from 'lucide-react';
+import { Shield, Clock, Globe, Eye, BookOpen, Layers, Server, FileText, Smartphone, Sparkles } from 'lucide-react';
 import { ActiveModalType } from './GovInfoModals';
+import { VengeanceGlowBadge } from '@/components/ui/VengeanceUI';
 
 interface GovHeaderProps {
   fontSizeLevel: number;
   onFontSizeChange: (delta: number) => void;
   isHighContrast: boolean;
   onToggleContrast: () => void;
+  isMissionControl?: boolean;
+  onToggleMissionControl?: () => void;
   language: 'hi' | 'en';
   onToggleLanguage: () => void;
   onOpenModal: (type: ActiveModalType) => void;
   onOpenDatasetReplay?: () => void;
   onOpenMobileQR?: () => void;
+  onOpenPitchTour?: () => void;
   isLiveApiMode?: boolean;
 }
 
 export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
   fontSizeLevel, onFontSizeChange, isHighContrast, onToggleContrast,
-  language, onToggleLanguage, onOpenModal, onOpenDatasetReplay, onOpenMobileQR, isLiveApiMode = true,
+  isMissionControl = false, onToggleMissionControl,
+  language, onToggleLanguage, onOpenModal, onOpenDatasetReplay, onOpenMobileQR, onOpenPitchTour, isLiveApiMode = true,
 }) {
   const [istTime, setIstTime] = useState('');
   useEffect(() => {
@@ -39,11 +44,9 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
       {/* Utility Strip */}
       <div className="bg-[#F1F5F9] border-b border-slate-200 px-4 lg:px-8 py-1 text-[11px] text-slate-600 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-bold border border-emerald-300 text-[10px] tracking-wider uppercase flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-            LIVE NATIONAL NETWORK
-          </span>
+          <VengeanceGlowBadge label="LIVE NATIONAL NETWORK" variant="emerald" />
           <span className="font-semibold text-slate-800">
+
             {language === 'hi' ? 'राष्ट्रीय मौसम स्टेशन नेटवर्क • वास्तविक समय सेंसर गुणवत्ता नियंत्रण' : 'National Weather Station Network • Automated Sensor Health & Quality Control'}
           </span>
           <span className="text-slate-400 hidden md:inline">|</span>
@@ -73,6 +76,12 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
                 <Smartphone className="w-3 h-3 text-amber-300" /><span>{language === 'hi' ? 'फ़ोन से टेस्ट करें (QR)' : 'Test With Phone (QR)'}</span>
               </button>
             )}
+            <span className="text-slate-300">•</span>
+            {onOpenPitchTour && (
+              <button onClick={onOpenPitchTour} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-2.5 py-0.5 rounded font-extrabold flex items-center gap-1 text-[10px] shadow-sm transition-all animate-pulse cursor-pointer">
+                <Sparkles className="w-3 h-3 text-yellow-200" /><span>{language === 'hi' ? '⚡ ऑटो-गाइड पीपीटी टूर' : '⚡ Play Automated Pitch Tour'}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -89,7 +98,14 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
               </React.Fragment>
             ))}
           </div>
+          {onToggleMissionControl && (
+            <button onClick={onToggleMissionControl} className={`flex items-center gap-1 px-2.5 py-0.5 rounded border text-[11px] font-extrabold transition-all ${isMissionControl ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md shadow-purple-500/20' : 'bg-slate-900 text-sky-300 border-slate-700 hover:bg-slate-800'}`}>
+              <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
+              <span>{isMissionControl ? (language === 'hi' ? '🏛️ सरकारी दृश्य' : '🏛️ Government View') : (language === 'hi' ? '🚀 मिशन कंट्रोल' : '🚀 Mission Control')}</span>
+            </button>
+          )}
           <button onClick={onToggleContrast} className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors ${isHighContrast ? 'bg-black text-yellow-300 border-yellow-300 font-bold' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'}`}>
+
             <Eye className="w-3 h-3" /><span>{isHighContrast ? 'Contrast ON' : 'Contrast'}</span>
           </button>
           <button onClick={onToggleLanguage} className="flex items-center gap-1 px-2 py-0.5 rounded border border-slate-300 bg-white text-[#002147] font-bold hover:bg-slate-100">

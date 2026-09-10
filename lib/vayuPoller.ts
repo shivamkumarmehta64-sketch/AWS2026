@@ -53,7 +53,16 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 // Dispatch browser notification on critical sensor failure
-function sendCriticalNotification(districtName: string, state: string, faultCode: string, message: string) {
+export function sendCriticalNotification(districtName: string, state: string, faultCode: string, message: string) {
+  logVayuEvent({
+    districtId: districtName.toLowerCase().replace(/\s+/g, '-'),
+    districtName,
+    state,
+    faultCode,
+    severity: 'CRITICAL',
+    message
+  });
+
   if (typeof window === 'undefined' || !('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
 
@@ -87,18 +96,12 @@ async function runPollerCycle() {
   for (const d of ALL_766_DISTRICTS) {
     const lastHealth = previousDistrictHealth.get(d.id) || 'LOADING';
 
-    let refreshThresholdMs = 300000; // 5 min default for HEALTHY
-    if (lastHealth === 'CRITICAL') {
-      refreshThresholdMs = 60000; // 1 min for CRITICAL
-    } else if (lastHealth === 'DEGRADED') {
-      refreshThresholdMs = 120000; // 2 min for DEGRADED
-    } else if (lastHealth === 'OFFLINE') {
+    if (lastHealth === 'OFFLINE') {
       const retries = offlineRetryCounts.get(d.id) || 0;
       if (retries >= 3) {
         // Stop retrying offline node after 3 attempts
         continue;
       }
-      refreshThresholdMs = 600000; // 10 min retry
     }
 
     // Schedule priority fetch if due

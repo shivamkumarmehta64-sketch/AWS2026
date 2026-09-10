@@ -2,20 +2,15 @@
 
 import React, { useState, useMemo } from 'react';
 import { useAllDistricts } from '@/lib/districtEngine';
-import { evaluateIMDHeatwave, HeatwaveReport, IMDHeatwaveWarning } from '@/lib/heatwaveEngine';
+import { evaluateIMDHeatwave } from '@/lib/heatwaveEngine';
 import {
   Flame,
   Sun,
-  AlertTriangle,
-  ShieldCheck,
   Calendar,
   ExternalLink,
-  ChevronRight,
   Droplets,
   HeartPulse,
-  Info,
-  ThermometerSnowflake,
-  ShieldAlert
+  Info
 } from 'lucide-react';
 
 interface Props {
