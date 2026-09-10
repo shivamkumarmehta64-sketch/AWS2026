@@ -82,7 +82,7 @@ export const GovInfoModals: React.FC<Props> = ({ activeModal, onClose, language 
             <div className="space-y-4">
               {/* Authoritative Citation */}
               <div className="p-3 bg-amber-50 border border-amber-200 rounded text-amber-950">
-                <div className="font-bold text-xs mb-1">📚 Authoritative References (for Jury Q&amp;A):</div>
+                <div className="font-bold text-xs mb-1">📚 Authoritative References (for Technical Q&amp;A):</div>
                 <ul className="text-[11px] space-y-0.5 list-disc list-inside">
                   <li><strong>WMO-No. 8</strong>: Guide to Meteorological Instruments and Methods of Observation — defines all physical parameter operating bounds used by NAWS-QMS.</li>
                   <li><strong>Zahumenský, I. (2004)</strong>: &ldquo;Guidelines on Quality Control Procedures for Data from Automatic Weather Stations&rdquo; — WMO IMOP ET-STMT/Doc. 6.1(2). Specifies the step-check, persistence-check, and gross-limit algorithms implemented in our QC pipeline.</li>
@@ -104,7 +104,7 @@ export const GovInfoModals: React.FC<Props> = ({ activeModal, onClose, language 
               ))}
 
               <div className="p-3 bg-slate-900 text-emerald-300 rounded border border-slate-800 font-mono text-[10px] space-y-1">
-                <div className="text-slate-400 font-sans text-[9px] uppercase font-bold mb-1">XAI Attribution Formula (Jury Answer — Zahumenský § 4.3 Extension):</div>
+                <div className="text-slate-400 font-sans text-[9px] uppercase font-bold mb-1">XAI Attribution Formula (Zahumenský § 4.3 Extension):</div>
                 <div>W_k = (α|Z_k| + β|Δ_k|) / Σ(α|Z_j| + β|Δ_j|) × 100%</div>
                 <div className="text-[9px] text-slate-400">Where Z_k = z-score deviation, Δ_k = rate-of-change. α = 0.6 (magnitude), β = 0.4 (velocity).</div>
                 <div className="text-[9px] text-slate-400">SENSOR_SPIKE: T=91.5%, P=4.2%, RH=4.3% | CONVECTIVE: T=20%, P=48%, RH=32%</div>

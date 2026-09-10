@@ -352,7 +352,7 @@ export default function MobileEdgeNodePage() {
               className="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-lg px-2.5 py-1.5 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-400"
             >
               {INDIAN_CITIES.map((c) => (
-                <option key={c.name} value={c.name}>
+                <option key={c.name} value={c.name} className="bg-slate-900 text-slate-100">
                   {c.name} ({c.lat}°N, {c.lon}°E)
                 </option>
               ))}
@@ -502,7 +502,7 @@ export default function MobileEdgeNodePage() {
           </div>
 
           <p className="text-[11px] text-slate-400">
-            <strong>SIH Jury Demo:</strong> Tap any button below to see how our AI instantly distinguishes between real severe weather and broken hardware sensors.
+            <strong>Operational Field Test:</strong> Tap any button below to verify how our WMO engine instantly distinguishes between real severe weather and broken hardware sensors.
           </p>
 
           <div className="grid grid-cols-2 gap-2 text-xs">

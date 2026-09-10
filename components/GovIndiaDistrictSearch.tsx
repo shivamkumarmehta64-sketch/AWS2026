@@ -162,7 +162,7 @@ export const GovIndiaDistrictSearch = React.memo<Props>(function GovIndiaDistric
       <div className="space-y-1 pt-1">
         <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
           <Sparkles className="w-3 h-3 text-amber-500" />
-          <span>{language === 'hi' ? 'त्वरित भारतीय जलवायु चरम सीमाएं (SIH जूरी परीक्षण):' : 'Jury 1-Tap Climatic Extremes:'}</span>
+          <span>{language === 'hi' ? 'त्वरित भारतीय जलवायु चरम सीमाएं:' : '1-Tap Extreme Climatic Observatories:'}</span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           {NOTABLE_INDIAN_EXTREMES.map((preset) => (

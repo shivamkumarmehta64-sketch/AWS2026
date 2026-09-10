@@ -31,7 +31,7 @@ export const GovTechnicianDrawer: React.FC<Props> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [targetId, setTargetId] = useState(selectedStationId);
-  const [log, setLog] = useState('SIH Jury Testbench Ready.\nTarget: AWS-DEL-04 (Safdarjung Observatory)\nClick any test scenario to inject live faults.');
+  const [log, setLog] = useState('Live Operational Testbench Ready.\nTarget: AWS-DEL-04 (Safdarjung Observatory)\nClick any test scenario to inject live faults.');
   const [notice, setNotice] = useState<string | null>(null);
 
   const fire = (msg: string, fn: () => void) => {
@@ -50,7 +50,7 @@ export const GovTechnicianDrawer: React.FC<Props> = ({
       <aside className="fixed bottom-4 right-4 z-40">
         <button onClick={() => setIsOpen(true)} className="bg-[#002147] hover:bg-[#0B3B60] text-white px-3.5 py-2 rounded-full shadow-2xl border-2 border-amber-400 flex items-center gap-2.5 text-xs font-bold transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-400">
           <Zap className="w-4 h-4 text-amber-400 animate-pulse" /><span>⚡ Live Testbench Simulator</span>
-          <span className="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold border border-amber-400/30">SIH Demo</span>
+          <span className="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold border border-amber-400/30">QA Tool</span>
         </button>
       </aside>
     );
@@ -63,7 +63,7 @@ export const GovTechnicianDrawer: React.FC<Props> = ({
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-400" />
             <div>
-              <span className="text-xs font-bold tracking-wide block">SIH Jury Testbench: Live Fault Injection</span>
+              <span className="text-xs font-bold tracking-wide block">Operational Testbench: Live Fault Injection</span>
               <span className="text-[10px] text-slate-300">Simulate sensor failures &amp; verify ML detection</span>
             </div>
           </div>
