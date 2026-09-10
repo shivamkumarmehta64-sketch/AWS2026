@@ -563,6 +563,16 @@ export const VayuDistrictMap: React.FC<Props> = ({
                 </div>
               )}
 
+              {hoveredDistrict.health === 'HEALTHY' && !isHeatLayer && (
+                <div className="mt-2 text-[10px] bg-emerald-950/70 text-emerald-200 p-1.5 rounded border border-emerald-800/80 flex items-center justify-between">
+                  <span className="font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    WMO Quality Check:
+                  </span>
+                  <span className="font-bold text-emerald-400">✔ VERIFIED GOOD (Flag 1)</span>
+                </div>
+              )}
+
               {hoveredDistrict.qcReport && hoveredDistrict.qcReport.faults.length > 0 && !isHeatLayer && (
                 <div className="mt-2 text-[10px] bg-red-950/70 text-red-200 p-1.5 rounded border border-red-800">
                   <span className="font-bold">Active Fault: </span>

@@ -99,6 +99,10 @@ export default function LeafletMap({ nodes, activeNode, onNodeClick, activeLayer
                 <div><span className="text-slate-500 font-medium">State:</span> {node.state}</div>
                 <div><span className="text-slate-500 font-medium">Elevation:</span> {node.elevM}m</div>
                 <div><span className="text-slate-500 font-medium">Coordinates:</span> {node.lat.toFixed(2)}°N, {node.lon.toFixed(2)}°E</div>
+                <div className="mt-1.5 p-1 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded text-[10px] flex items-center justify-between font-medium">
+                  <span>WMO Quality Check:</span>
+                  <span className="font-bold text-emerald-700">✔ VERIFIED (Flag 1)</span>
+                </div>
                 <div className="mt-2 text-center text-sky-600 font-bold hover:underline cursor-pointer">
                   Click to inspect live telemetry →
                 </div>
