@@ -1,6 +1,5 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
-  "cleanUrls": true,
-  "regions": ["bom1"]
+  "cleanUrls": true
 }

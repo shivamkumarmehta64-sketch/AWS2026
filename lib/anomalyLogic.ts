@@ -1,4 +1,5 @@
 import { IMD_AWS_STATIONS, getStationProfile } from './stationData';
+import { classifyAnomaly, AnomalyFeatureVector } from './mlAnomalyModel';
 
 // ─── Type Definitions ───
 export type WMOQualityFlag = 'FLAG_1_VERIFIED_GOOD' | 'FLAG_2_CONVECTIVE_STORM' | 'FLAG_3_SUSPECT_DRIFT' | 'FLAG_4_CORRUPT_HARDWARE' | 'FLAG_5_PACKET_LOSS';
@@ -18,6 +19,7 @@ export interface TelemetryPacket {
   alertLevel: GovAlertLevel;
   faultProbability: number;
   xaiAttribution: { tempWeight: number; pressWeight: number; humWeight: number; primaryParameter: string; diagnosticNote: string };
+  mlPrediction: { mlClassification: string; mlConfidence: number; agreesWithRules: boolean };
   operationalAction: string;
   ticketId: string | null;
   spatialValidation?: { nearestStations: string[]; verdict: 'SINGLE_NODE_FAULT' | 'REGIONAL_WEATHER' | 'INSUFFICIENT_DATA' };
@@ -193,8 +195,17 @@ export class NICWMOAnomalyEngine {
   }
 
   /** Evaluate an externally ingested observation */
-  processIngestedObservation(stationId: string, rawT: number | null, rawP: number | null, rawH: number | null, timestamp = Date.now()): TelemetryPacket {
-    return this.evaluate(stationId, rawT, rawP, rawH, null, null, null, timestamp);
+  processIngestedObservation(
+    stationId: string,
+    rawT: number | null,
+    rawP: number | null,
+    rawH: number | null,
+    timestamp = Date.now(),
+    rawW: number | null = null,
+    rawWD: number | null = null,
+    rawRain: number | null = null
+  ): TelemetryPacket {
+    return this.evaluate(stationId, rawT, rawP, rawH, rawW, rawWD, rawRain, timestamp);
   }
 
   /** Spatial KNN cross-validation: check 3 nearest neighbors within 500km */
@@ -354,6 +365,29 @@ export class NICWMOAnomalyEngine {
     const hmacSig = `0x${hex1}${hex2}${(timestamp % 0xffff).toString(16).padStart(4, '0')}`;
     const merkleRoot = `0x${hex2}${hex1}a7f9`;
 
+    const mlFeatures: AnomalyFeatureVector = {
+      tempRoC: tempRoC,
+      pressRoC: pressRoC,
+      humRoC: humRoC,
+      tempAbsolute: rawT,
+      pressAbsolute: rawP,
+      humAbsolute: rawH,
+      frozenTickCount: isFrozen ? 6 : 0,
+      spikeAmplitude: tD,
+      driftCumulative: driftAmt
+    };
+
+    const mlPred = classifyAnomaly(mlFeatures);
+    let mappedMlCls = mlPred.classification;
+    if (mappedMlCls === 'NOMINAL') mappedMlCls = 'NOMINAL_OPERATION';
+    if (mappedMlCls === 'CONVECTIVE_STORM') mappedMlCls = 'GENUINE_CONVECTIVE_EVENT';
+    if (mappedMlCls === 'PACKET_LOSS') mappedMlCls = 'TELEMETRY_PACKET_LOSS';
+
+    const agreesWithRules = mappedMlCls === cls;
+    if (!agreesWithRules) {
+      console.warn(`[ML Disagreement] Station ${stationId}: Rule=${cls}, ML=${mappedMlCls}`);
+    }
+
     const pkt: TelemetryPacket = {
       packetId: `PKT-${stationId.replace('AWS-', '')}-${timestamp.toString().slice(-6)}`,
       stationId, timestamp, timeIST: formatIST(timestamp),
@@ -362,6 +396,7 @@ export class NICWMOAnomalyEngine {
       ratesOfChange: { tempRoC, pressRoC, humRoC, windRoC: Math.round(((rawW ?? 0) - (prev?.raw.windSpeedKph ?? rawW ?? 0)) * 10) / 10 },
       classification: cls, wmoFlag: flag, alertLevel: alert, faultProbability: fp,
       xaiAttribution: { tempWeight: Math.round(tW * 10) / 10, pressWeight: Math.round(pW * 10) / 10, humWeight: Math.round(hW * 10) / 10, primaryParameter: param, diagnosticNote: diag },
+      mlPrediction: { mlClassification: mlPred.classification, mlConfidence: mlPred.confidence, agreesWithRules },
       operationalAction: action, ticketId: tid,
       securitySeal: {
         hmacSha256: hmacSig,
@@ -551,7 +586,7 @@ export function generateCapAlert(pkt: TelemetryPacket, stationName: string, stat
 
   return {
     alertId: `CAP-IN-MD-${Date.now().toString(36).toUpperCase()}`,
-    sender: 'IMD-NAWS-QMS/HQ-NEW-DELHI',
+    sender: 'IMD-JATAYU-QMS/HQ-NEW-DELHI',
     sentTime: new Date(pkt.timestamp).toISOString(),
     status: 'ACTUAL',
     msgType: 'ALERT',

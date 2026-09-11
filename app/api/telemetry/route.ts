@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const runtime = 'edge';
+
 import { nicWmoEngineInstance, TelemetryPacket } from '@/lib/anomalyLogic';
 import { IMD_AWS_STATIONS, getStationProfile } from '@/lib/stationData';
 import { fetchLiveStationObservation } from '@/lib/liveWeatherService';
@@ -29,7 +31,8 @@ function isRateLimited(key: string): boolean {
 }
 
 /**
- * NAWS-QMS Real-Time Telemetry Ingestion API (Problem SIH26073)
+ * Project JATAYU: Joint Atmospheric Telemetry & Anomaly Unification
+ * JATAYU-QMS Real-Time Telemetry Ingestion API (Problem SIH26073)
  * Provides high-throughput, low-latency (<5ms) validation of 3 primary parameters:
  * - Temperature (°C)
  * - Atmospheric Pressure (hPa)
@@ -53,7 +56,22 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { stationId, temperature, pressure, humidity, timestamp, lat, lon, deviceName } = body;
+    const {
+      stationId,
+      temperature,
+      pressure,
+      humidity,
+      windSpeed,
+      windDirection,
+      rainfall,
+      solarRadiation,
+      batteryVoltage,
+      timestamp,
+      lat,
+      lon,
+      deviceName,
+      sensorSource,
+    } = body;
 
     if (!stationId || typeof stationId !== 'string') {
       return NextResponse.json(
@@ -102,6 +120,9 @@ export async function POST(request: NextRequest) {
     const rawTemp = parseParam(temperature, -90, 70);
     const rawPress = parseParam(pressure, 600, 1100);
     const rawHum = parseParam(humidity, 0, 100);
+    const rawWind = parseParam(windSpeed, 0, 250);
+    const rawWindDir = parseParam(windDirection, 0, 360);
+    const rawRain = parseParam(rainfall, 0, 300);
 
     const safeTimestamp = (typeof timestamp === 'number' && timestamp > 0 && timestamp < Date.now() + 86400000)
       ? timestamp
@@ -113,14 +134,29 @@ export async function POST(request: NextRequest) {
       rawTemp,
       rawPress,
       rawHum,
-      safeTimestamp
+      safeTimestamp,
+      rawWind,
+      rawWindDir,
+      rawRain
     );
 
-    // Attach mobile hardware GPS and device metadata if provided
-    (evaluatedPacket as unknown as { mobileMetadata?: { lat?: number; lon?: number; deviceName?: string } }).mobileMetadata = {
+    // Attach mobile hardware GPS, device metadata, solar, and battery metrics if provided
+    (evaluatedPacket as unknown as {
+      mobileMetadata?: {
+        lat?: number;
+        lon?: number;
+        deviceName?: string;
+        solarRadiation?: number;
+        batteryVoltage?: number;
+        sensorSource?: string;
+      };
+    }).mobileMetadata = {
       lat: typeof lat === 'number' && !isNaN(lat) ? lat : undefined,
       lon: typeof lon === 'number' && !isNaN(lon) ? lon : undefined,
       deviceName: typeof deviceName === 'string' ? deviceName : 'Field Smartphone Sensor',
+      solarRadiation: typeof solarRadiation === 'number' && !isNaN(solarRadiation) ? solarRadiation : undefined,
+      batteryVoltage: typeof batteryVoltage === 'number' && !isNaN(batteryVoltage) ? batteryVoltage : undefined,
+      sensorSource: typeof sensorSource === 'string' ? sensorSource : undefined,
     };
 
     // Save into live ingestion ring buffer for real-time mobile sync
@@ -164,11 +200,19 @@ export async function GET(request: NextRequest) {
       ? liveIngestedBuffer.filter((p) => p.timestamp > since)
       : liveIngestedBuffer.slice(0, 10);
 
-    return NextResponse.json({
-      success: true,
-      count: filtered.length,
-      packets: filtered,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        count: filtered.length,
+        packets: filtered,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=5',
+          'CDN-Cache-Control': 'public, s-maxage=2',
+        },
+      }
+    );
   }
 
   // If live query requested for a specific station, fetch from Open-Meteo public API
@@ -177,14 +221,23 @@ export async function GET(request: NextRequest) {
     if (station) {
       const liveData = await fetchLiveStationObservation(station);
       if (liveData) {
-        return NextResponse.json({
-          success: true,
-          stationId: station.stationId,
-          name: station.name,
-          coordinates: { latitude: station.latitude, longitude: station.longitude },
-          liveObservation: liveData,
-          source: 'Open-Meteo Free Public Meteorological API',
-        });
+        return NextResponse.json(
+          {
+            success: true,
+            stationId: station.stationId,
+            name: station.name,
+            coordinates: { latitude: station.latitude, longitude: station.longitude },
+            liveObservation: liveData,
+            source: 'Open-Meteo Free Public Meteorological API',
+          },
+          {
+            headers: {
+              'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60',
+              'CDN-Cache-Control': 'public, s-maxage=15',
+              'Vercel-CDN-Cache-Control': 'public, s-maxage=15',
+            },
+          }
+        );
       }
     }
   }
@@ -198,20 +251,29 @@ export async function GET(request: NextRequest) {
     status: s.status || 'OPERATIONAL',
   }));
 
-  return NextResponse.json({
-    system: 'National Automatic Weather Station Quality Management System (NAWS-QMS)',
-    version: '4.2.8',
-    problemStatement: 'SIH26073 - Automated Telemetry Anomaly Detection',
-    liveDataSource: 'Open-Meteo Free Public Satellite & Surface API',
-    qualityFlags: {
-      FLAG_1_VERIFIED_GOOD: 'Observation nominal, within step limits and verified for NWP ingestion.',
-      FLAG_2_CONVECTIVE_STORM: 'Severe convective front (pressure drop + humidity surge). Validated for NWP.',
-      FLAG_3_SUSPECT_DRIFT: 'Barometer gradual monotonic calibration drift.',
-      FLAG_4_CORRUPT_HARDWARE: 'Thermistor open circuit spike or stuck ADC register freeze. Quarantined.',
-      FLAG_5_PACKET_LOSS: 'Missing frames or corrupted payload. Reconstructed from historical baseline.',
+  return NextResponse.json(
+    {
+      system: 'Project JATAYU: Joint Atmospheric Telemetry & Anomaly Unification (JATAYU-QMS)',
+      version: '4.2.8',
+      problemStatement: 'SIH26073 - Automated Weather Station Anomaly Detection',
+      liveDataSource: 'Open-Meteo Free Public Satellite & Surface API',
+      qualityFlags: {
+        FLAG_1_VERIFIED_GOOD: 'Observation nominal, within step limits and verified for NWP ingestion.',
+        FLAG_2_CONVECTIVE_STORM: 'Severe convective front (pressure drop + humidity surge). Validated for NWP.',
+        FLAG_3_SUSPECT_DRIFT: 'Barometer gradual monotonic calibration drift.',
+        FLAG_4_CORRUPT_HARDWARE: 'Thermistor open circuit spike or stuck ADC register freeze. Quarantined.',
+        FLAG_5_PACKET_LOSS: 'Missing frames or corrupted payload. Reconstructed from historical baseline.',
+      },
+      totalMonitoredStations: stations.length,
+      stations,
     },
-    totalMonitoredStations: stations.length,
-    stations,
-  });
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        'CDN-Cache-Control': 'public, s-maxage=60',
+        'Vercel-CDN-Cache-Control': 'public, s-maxage=60',
+      },
+    }
+  );
 }
 

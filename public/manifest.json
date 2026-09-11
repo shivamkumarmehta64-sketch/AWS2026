@@ -1,0 +1,20 @@
+{
+  "name": "Project JATAYU — National AWS Quality Management System",
+  "short_name": "JATAYU-QMS",
+  "description": "Joint Atmospheric Telemetry & Anomaly Unification — Real-time WMO Pub 8 sensor quality control, edge anomaly discrimination, and live hardware sensor streaming for MoES/IMD.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#030712",
+  "theme_color": "#002147",
+  "icons": [
+    {
+      "src": "/jatayu-seal.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["weather", "government", "utilities", "productivity"]
+}

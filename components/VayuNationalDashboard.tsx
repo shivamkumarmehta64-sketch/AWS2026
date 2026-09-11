@@ -3,16 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAllDistricts } from '@/lib/districtEngine';
 import { getVayuEvents, VayuEventLogEntry, subscribeToVayuEvents } from '@/lib/vayuEventLog';
-import {
-  ShieldAlert,
-  BarChart3,
-  Activity,
-  Pause,
-  Play,
-  Layers,
-  ChevronRight
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldAlert, BarChart3, Activity, Pause, Play, Layers, ChevronRight, CheckCircle2 } from 'lucide-react';
 
 interface Props {
   onSelectDistrict: (districtId: string) => void;
@@ -20,16 +11,12 @@ interface Props {
   language?: 'en' | 'hi';
 }
 
-export const VayuNationalDashboard: React.FC<Props> = ({
-  onSelectDistrict,
-  onSelectState
-}) => {
+export const VayuNationalDashboard: React.FC<Props> = ({ onSelectDistrict, onSelectState }) => {
   const allDistricts = useAllDistricts();
   const [isFeedPaused, setIsFeedPaused] = useState(false);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [events, setEvents] = useState<VayuEventLogEntry[]>(() => getVayuEvents());
 
-  // Subscribe to real-time events from vayuEventLog
   useEffect(() => {
     const unsub = subscribeToVayuEvents(() => {
       if (!isFeedPaused) {
@@ -39,7 +26,6 @@ export const VayuNationalDashboard: React.FC<Props> = ({
     return unsub;
   }, [isFeedPaused]);
 
-  // 1. TOP STATS ROW
   const stats = useMemo(() => {
     const total = allDistricts.length;
     let healthy = 0;
@@ -57,34 +43,20 @@ export const VayuNationalDashboard: React.FC<Props> = ({
     const live = healthy + degraded + critical;
     const coverage = total > 0 ? ((live / total) * 100).toFixed(1) : '0.0';
 
-    return {
-      total,
-      healthy,
-      activeFaults: degraded + critical,
-      critical,
-      offline,
-      coverage
-    };
+    return { total, healthy, activeFaults: degraded + critical, critical, offline, coverage };
   }, [allDistricts]);
 
-  // 2. FAULT LEADERBOARD (Top 10 most-faulted districts)
   const leaderboard = useMemo(() => {
     const faulted = allDistricts.filter(d => d.qcReport && d.qcReport.faults.length > 0);
     faulted.sort((a, b) => (b.qcReport?.faults.length || 0) - (a.qcReport?.faults.length || 0));
     return faulted.slice(0, 10);
   }, [allDistricts]);
 
-  // 3. FAULT TYPE BREAKDOWN
   const categoryBreakdown = useMemo(() => {
     const counts: Record<string, number> = {
-      'Gross Limit': 0,
-      'Soft Limit': 0,
-      'Step Check': 0,
-      'Internal Consistency': 0,
-      'Persistence': 0,
-      'Missing Data / Comms': 0,
-      'Statistical Anomaly': 0,
-      'India-Specific Context': 0
+      'Gross Limit': 0, 'Soft Limit': 0, 'Step Check': 0,
+      'Internal Consistency': 0, 'Persistence': 0, 'Missing Data / Comms': 0,
+      'Statistical Anomaly': 0, 'India-Specific Context': 0
     };
 
     for (const d of allDistricts) {
@@ -98,11 +70,9 @@ export const VayuNationalDashboard: React.FC<Props> = ({
         }
       }
     }
-
     return counts;
   }, [allDistricts]);
 
-  // 4. STATE-BY-STATE HEALTH (for all 36 States/UTs)
   const stateHealthGrid = useMemo(() => {
     const stateMap = new Map<string, { total: number; faults: number; worstHealth: string }>();
 
@@ -130,353 +100,175 @@ export const VayuNationalDashboard: React.FC<Props> = ({
       .sort((a, b) => b.faults - a.faults || a.name.localeCompare(b.name));
   }, [allDistricts]);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { 
-      opacity: 1, 
-      y: 0,
-      transition: { type: 'spring' as const, stiffness: 300, damping: 24 }
-    }
-  };
-
-
   return (
-    <motion.div 
-      className="space-y-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      {/* 1. TOP STATS ROW */}
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3"
-      >
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-sky-500/40 transition-all">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Districts Monitored</span>
-            <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
-          </div>
-          <div className="text-2xl font-extrabold text-white font-mono mt-1">{stats.total}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5 font-medium">All 28 States &amp; 8 UTs</div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-emerald-500/40 transition-all">
-          <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Live &amp; Healthy</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          </div>
-          <div className="text-2xl font-extrabold text-emerald-400 font-mono mt-1">{stats.healthy}</div>
-          <div className="text-[10px] text-emerald-400/80 mt-0.5 font-medium">WMO Flag 1 Verified</div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-amber-500/40 transition-all">
-          <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Active Faults</span>
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
-          </div>
-          <div className="text-2xl font-extrabold text-amber-400 font-mono mt-1">{stats.activeFaults}</div>
-          <div className="text-[10px] text-amber-400/80 mt-0.5 font-medium">Under Diagnostic Isolation</div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-red-500/40 transition-all">
-          <div className="text-[11px] font-bold text-red-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Critical Alerts</span>
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          </div>
-          <div className="text-2xl font-extrabold text-red-400 font-mono mt-1">{stats.critical}</div>
-          <div className="text-[10px] text-red-400/80 mt-0.5 font-medium">Immediate Work Order</div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-slate-700 transition-all">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Offline Stations</span>
-            <span className="w-2 h-2 rounded-full bg-slate-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-300 font-mono mt-1">{stats.offline}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5 font-medium">Comms link loss (&gt;15m)</div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-blue-500/40 transition-all">
-          <div className="text-[11px] font-bold text-sky-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Data Coverage %</span>
-            <span className="w-2 h-2 rounded-full bg-sky-400" />
-          </div>
-          <div className="text-2xl font-extrabold text-sky-300 font-mono mt-1">{stats.coverage}%</div>
-          <div className="text-[10px] text-sky-400/80 mt-0.5 font-medium">Open-Meteo Pipeline</div>
-        </motion.div>
-      </motion.div>
-
-      {/* 2 & 3: Two-Column Row: Leaderboard Left, Category Breakdown Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left: Fault Leaderboard (7 cols) */}
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-          className="lg:col-span-7 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl"
-        >
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5 text-red-400" />
-              <h3 className="font-extrabold text-sm uppercase text-white">
-                Active Fault Leaderboard (Top 10 Districts)
-              </h3>
+    <div className="space-y-6 text-slate-800">
+      
+      {/* Top Stats Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[
+          { label: 'Districts Monitored', value: stats.total, desc: 'All 28 States & 8 UTs', color: 'bg-blue-50 border-blue-200 text-blue-900', dot: 'bg-blue-600' },
+          { label: 'Live & Healthy', value: stats.healthy, desc: 'WMO Flag 1 Verified', color: 'bg-green-50 border-green-200 text-green-900', dot: 'bg-green-600' },
+          { label: 'Active Faults', value: stats.activeFaults, desc: 'Under Diagnostic Isolation', color: 'bg-amber-50 border-amber-200 text-amber-900', dot: 'bg-amber-500' },
+          { label: 'Critical Alerts', value: stats.critical, desc: 'Immediate Work Order', color: 'bg-red-50 border-red-200 text-red-900', dot: 'bg-red-600' },
+          { label: 'Offline Stations', value: stats.offline, desc: 'Comms link loss (>15m)', color: 'bg-slate-100 border-slate-300 text-slate-800', dot: 'bg-slate-500' },
+          { label: 'Data Coverage %', value: stats.coverage + '%', desc: 'Open-Meteo Pipeline', color: 'bg-blue-50 border-blue-200 text-blue-900', dot: 'bg-blue-500' },
+        ].map((stat, i) => (
+          <div key={i} className={`p-4 rounded border shadow-sm ${stat.color}`}>
+            <div className="text-[10px] font-bold uppercase tracking-wider flex items-center justify-between opacity-80">
+              <span>{stat.label}</span>
+              <span className={`w-2 h-2 rounded-full ${stat.dot}`} />
             </div>
-            <span className="text-xs text-slate-400 font-mono">Live QC Gating</span>
+            <div className="text-2xl font-extrabold font-mono mt-2">{stat.value}</div>
+            <div className="text-[10px] opacity-70 mt-1 font-medium">{stat.desc}</div>
           </div>
+        ))}
+      </div>
 
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-xs text-left">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left: Fault Leaderboard */}
+        <div className="lg:col-span-7 bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+          <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-red-700" />
+              <h3 className="font-bold text-sm uppercase text-slate-800">Active Fault Register (Top 10)</h3>
+            </div>
+          </div>
+          <div className="overflow-x-auto p-4">
+            <table className="w-full text-sm text-left">
               <thead>
-                <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800 uppercase font-bold text-[10px]">
-                  <th className="py-2.5 px-3">District</th>
-                  <th className="py-2.5 px-3">State</th>
-                  <th className="py-2.5 px-3 text-center">Faults</th>
-                  <th className="py-2.5 px-3">Worst Fault Code</th>
-                  <th className="py-2.5 px-3 text-right">Action</th>
+                <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 font-bold uppercase text-[11px]">
+                  <th className="py-3 px-3">District</th>
+                  <th className="py-3 px-3">State</th>
+                  <th className="py-3 px-3 text-center">Fault Count</th>
+                  <th className="py-3 px-3">Worst Fault Code</th>
+                  <th className="py-3 px-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800 font-mono">
+              <tbody className="divide-y divide-slate-100">
                 {leaderboard.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-slate-500 font-sans">
+                    <td colSpan={5} className="py-6 text-center text-slate-500">
+                      <CheckCircle2 className="w-6 h-6 text-green-500 mx-auto mb-2" />
                       All monitored stations currently healthy. No active anomalies registered.
                     </td>
                   </tr>
                 ) : (
-                  leaderboard.map((item, idx) => {
-                    const worst = item.qcReport?.faults[0];
-                    return (
-                      <motion.tr
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 + idx * 0.05 }}
-                        key={item.district.id}
-                        onClick={() => onSelectDistrict(item.district.id)}
-                        className="hover:bg-slate-800/60 cursor-pointer transition-colors"
-                      >
-                        <td className="py-2.5 px-3 font-sans font-bold text-white">
-                          {item.district.name}
-                        </td>
-                        <td className="py-2.5 px-3 font-sans text-slate-400">{item.district.state}</td>
-                        <td className="py-2.5 px-3 text-center font-bold">
-                          <span className="px-2 py-0.5 rounded bg-red-950 text-red-300 border border-red-800">
-                            {item.qcReport?.faults.length || 0}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-red-400 font-bold truncate max-w-[180px]">
-                          {worst?.code || 'NOMINAL'}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-sans">
-                          <button className="text-sky-400 hover:text-sky-300 font-bold text-[11px] flex items-center justify-end gap-0.5 ml-auto group">
-                            Inspect <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                          </button>
-                        </td>
-                      </motion.tr>
-                    );
-                  })
+                  leaderboard.map(item => (
+                    <tr key={item.district.id} onClick={() => onSelectDistrict(item.district.id)} className="hover:bg-slate-50 cursor-pointer transition-colors">
+                      <td className="py-3 px-3 font-semibold text-slate-800">{item.district.name}</td>
+                      <td className="py-3 px-3 text-slate-600">{item.district.state}</td>
+                      <td className="py-3 px-3 text-center">
+                        <span className="px-2.5 py-1 rounded-full bg-red-100 text-red-800 font-bold text-xs">{item.qcReport?.faults.length || 0}</span>
+                      </td>
+                      <td className="py-3 px-3 text-red-700 font-bold truncate max-w-[180px]">
+                        {item.qcReport?.faults[0]?.code || 'NOMINAL'}
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <button className="text-blue-700 hover:text-blue-900 font-bold text-xs flex items-center justify-end gap-1 ml-auto">
+                          Inspect <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Right: Fault Category Breakdown (5 cols) */}
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-          className="lg:col-span-5 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl"
-        >
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        {/* Right: Fault Category Breakdown */}
+        <div className="lg:col-span-5 bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+          <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-sky-400" />
-              <h3 className="font-extrabold text-sm uppercase text-white">
-                Faults by WMO Category
-              </h3>
+              <BarChart3 className="w-5 h-5 text-blue-700" />
+              <h3 className="font-bold text-sm uppercase text-slate-800">Faults by WMO Category</h3>
             </div>
             {selectedCategoryFilter && (
-              <button
-                onClick={() => setSelectedCategoryFilter(null)}
-                className="text-[10px] text-sky-400 hover:text-sky-300 font-mono"
-              >
+              <button onClick={() => setSelectedCategoryFilter(null)} className="text-xs text-blue-700 hover:underline">
                 Clear Filter
               </button>
             )}
           </div>
-
-          <div className="mt-3 space-y-2">
+          <div className="p-4 space-y-3">
             {Object.entries(categoryBreakdown).map(([cat, count]) => {
               const total = Object.values(categoryBreakdown).reduce((a, b) => a + b, 0);
               const pct = total > 0 ? ((count / total) * 100).toFixed(0) : 0;
               const isSelected = selectedCategoryFilter === cat;
 
               return (
-                <div
-                  key={cat}
-                  onClick={() => setSelectedCategoryFilter(isSelected ? null : cat)}
-                  className={`p-2 rounded-lg cursor-pointer transition-all border ${
-                    isSelected
-                      ? 'bg-slate-800 border-sky-400 shadow-xs'
-                      : 'hover:bg-slate-800/50 border-slate-800/80'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-semibold text-slate-200">{cat}</span>
-                    <span className="font-mono text-slate-400">
-                      {count} ({pct}%)
-                    </span>
+                <div key={cat} onClick={() => setSelectedCategoryFilter(isSelected ? null : cat)} className={`p-3 rounded border cursor-pointer transition-all ${isSelected ? 'bg-blue-50 border-blue-400' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="font-semibold text-slate-800">{cat}</span>
+                    <span className="text-slate-600 font-mono">{count} ({pct}%)</span>
                   </div>
-                  <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 1, delay: 0.2 }}
-                      className="bg-gradient-to-r from-sky-500 to-blue-600 h-1.5 rounded-full"
-                    />
+                  <div className="w-full bg-slate-200 rounded-full h-2">
+                    <div style={{ width: `${pct}%` }} className="bg-blue-600 h-2 rounded-full transition-all duration-500" />
                   </div>
                 </div>
               );
             })}
           </div>
-        </motion.div>
+        </div>
       </div>
 
-      {/* 4. REAL-TIME EVENT STREAM (Live Tick Log) */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl"
-      >
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+      {/* Real-Time Event Stream */}
+      <div className="bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+        <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-emerald-400 animate-pulse" />
-            <h3 className="font-extrabold text-sm uppercase text-white">
-              Real-Time Observation QC Event Feed
-            </h3>
+            <Activity className="w-5 h-5 text-green-700" />
+            <h3 className="font-bold text-sm uppercase text-slate-800">Live Observation Event Log</h3>
           </div>
-          <button
-            onClick={() => setIsFeedPaused(p => !p)}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-white bg-slate-800 border border-slate-700 px-2.5 py-1 rounded"
-          >
-            {isFeedPaused ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5 text-amber-400" />}
-            <span>{isFeedPaused ? 'Resume' : 'Pause'}</span>
+          <button onClick={() => setIsFeedPaused(p => !p)} className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 bg-white border border-slate-300 px-3 py-1.5 rounded">
+            {isFeedPaused ? <Play className="w-4 h-4 text-green-700" /> : <Pause className="w-4 h-4 text-amber-600" />}
+            <span>{isFeedPaused ? 'Resume Feed' : 'Pause Feed'}</span>
           </button>
         </div>
-
-        <div className="space-y-1.5 max-h-48 overflow-y-auto font-mono text-xs pr-1">
-          <AnimatePresence>
-            {events.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }}
-                className="py-4 text-center text-slate-500 font-sans"
-              >
-                Listening for automated ingest telemetry packets...
-              </motion.div>
-            ) : (
-              events.slice(0, 8).map(evt => (
-                <motion.div
-                  key={evt.id}
-                  initial={{ opacity: 0, x: -10, height: 0 }}
-                  animate={{ opacity: 1, x: 0, height: 'auto' }}
-                  exit={{ opacity: 0, x: 10, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => onSelectDistrict(evt.districtId)}
-                  className="p-2 rounded bg-slate-950/70 border border-slate-800/80 hover:border-sky-500/50 cursor-pointer flex items-center justify-between text-[11px] transition-colors"
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="text-slate-400">{evt.timestamp}</span>
-                    <span className="font-bold text-white font-sans">{evt.districtName}</span>
-                    <span className="text-amber-400 font-bold">{evt.faultCode}</span>
-                    <span className="text-slate-400 truncate hidden sm:inline">{evt.message}</span>
-                  </div>
-                  <span className="text-[10px] text-sky-400 font-sans ml-2 shrink-0 group hover:translate-x-1 transition-transform">Inspect →</span>
-                </motion.div>
-              ))
-            )}
-          </AnimatePresence>
+        <div className="p-4 space-y-2 max-h-64 overflow-y-auto font-mono text-sm">
+          {events.length === 0 ? (
+            <div className="py-6 text-center text-slate-500 font-sans">Awaiting incoming telemetry packets...</div>
+          ) : (
+            events.slice(0, 10).map(evt => (
+              <div key={evt.id} onClick={() => onSelectDistrict(evt.districtId)} className="p-3 rounded bg-slate-50 border border-slate-200 hover:border-blue-400 cursor-pointer flex items-center justify-between transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-500">{evt.timestamp}</span>
+                  <span className="font-bold text-slate-900 font-sans">{evt.districtName}</span>
+                  <span className="text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded text-xs">{evt.faultCode}</span>
+                  <span className="text-slate-600 hidden md:inline">{evt.message}</span>
+                </div>
+                <span className="text-blue-700 font-sans font-bold text-xs">Inspect &rarr;</span>
+              </div>
+            ))
+          )}
         </div>
-      </motion.div>
+      </div>
 
-      {/* 5. INDIA STATE HEALTH GRID (36 States & UTs) */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl"
-      >
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-          <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-indigo-400" />
-            <h3 className="font-extrabold text-sm uppercase text-white">
-              All-India State &amp; UT Health Grid (36 Administrative Units)
-            </h3>
-          </div>
-          <span className="text-xs text-slate-400 font-mono">Worst District Severity</span>
+      {/* India State Health Grid */}
+      <div className="bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+        <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+          <Layers className="w-5 h-5 text-indigo-700" />
+          <h3 className="font-bold text-sm uppercase text-slate-800">State / UT Network Status (36 Units)</h3>
         </div>
-
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2"
-        >
+        <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {stateHealthGrid.map(st => {
             const isCrit = st.worstHealth === 'CRITICAL';
             const isDeg = st.worstHealth === 'DEGRADED';
             const isOff = st.worstHealth === 'OFFLINE';
 
             return (
-              <motion.button
-                variants={itemVariants}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                key={st.name}
-                onClick={() => onSelectState?.(st.name)}
-                className={`p-2.5 rounded-lg border text-left transition-colors ${
-                  isCrit
-                    ? 'bg-red-950/40 border-red-800/80 hover:border-red-500'
-                    : isDeg
-                    ? 'bg-amber-950/40 border-amber-800/80 hover:border-amber-500'
-                    : isOff
-                    ? 'bg-slate-950/60 border-slate-800 hover:border-slate-600'
-                    : 'bg-slate-950/70 border-slate-800 hover:border-emerald-500/60'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold truncate text-slate-200">{st.name}</span>
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      isCrit ? 'bg-red-500 animate-pulse' : isDeg ? 'bg-amber-400' : isOff ? 'bg-slate-500' : 'bg-emerald-400'
-                    }`}
-                  />
+              <button key={st.name} onClick={() => onSelectState?.(st.name)} className={`p-3 rounded border text-left transition-colors ${isCrit ? 'bg-red-50 border-red-300' : isDeg ? 'bg-amber-50 border-amber-300' : isOff ? 'bg-slate-100 border-slate-300' : 'bg-white border-slate-200 hover:border-green-400'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-800 truncate pr-2">{st.name}</span>
+                  <span className={`w-2 h-2 shrink-0 rounded-full ${isCrit ? 'bg-red-600' : isDeg ? 'bg-amber-500' : isOff ? 'bg-slate-500' : 'bg-green-500'}`} />
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1 font-mono">
-                  <span>{st.total} Dists</span>
-                  <span className={st.faults > 0 ? 'text-red-400 font-bold' : 'text-emerald-400'}>
-                    {st.faults > 0 ? `${st.faults} Faults` : 'Nominal'}
-                  </span>
+                <div className="flex items-center justify-between text-[10px] text-slate-600">
+                  <span>{st.total} Units</span>
+                  <span className={`font-bold ${st.faults > 0 ? 'text-red-700' : 'text-green-700'}`}>{st.faults > 0 ? `${st.faults} Alerts` : 'Nominal'}</span>
                 </div>
-              </motion.button>
+              </button>
             );
           })}
-        </motion.div>
-      </motion.div>
-    </motion.div>
+        </div>
+      </div>
+    </div>
   );
 };

@@ -6,9 +6,10 @@ import { IMDStationProfile, IMD_AWS_STATIONS } from '@/lib/stationData';
 import { TelemetryPacket, WMOQualityFlag } from '@/lib/anomalyLogic';
 import {
   Building2, MapPin, Table, LineChart as ChartIcon, ShieldCheck, AlertCircle,
-  BatteryMedium, CheckCircle2, Sparkles, Lock, Wifi, WifiOff, HardDrive, Clock,
-  RotateCw, Check, Zap
+  BatteryMedium, CheckCircle2, Lock, Wifi, WifiOff, HardDrive, Clock,
+  RotateCw, Check, Zap, Cpu, UserCheck
 } from 'lucide-react';
+import { GovPlainLanguageSensorCard } from './GovPlainLanguageSensorCard';
 
 
 
@@ -22,6 +23,7 @@ interface Props {
   liveStatusInfo?: { temperature: number; pressure: number; humidity: number; timeIST: string; source: string } | null;
   isSyncingLive?: boolean;
   onManualSync?: () => void;
+  onSimulateFault?: (faultType: 'spike' | 'storm' | 'freeze' | 'drift' | 'reset') => void;
 }
 
 const FLAG_STYLES: Record<WMOQualityFlag, { bg: string; text: string; label: string; icon?: React.ReactNode }> = {
@@ -50,6 +52,7 @@ const makeFallback = (s: IMDStationProfile): TelemetryPacket => ({
   ratesOfChange: { tempRoC: 0.1, pressRoC: -0.2, humRoC: 0.4, windRoC: 0 },
   classification: 'NOMINAL_OPERATION', wmoFlag: 'FLAG_1_VERIFIED_GOOD', alertLevel: 'LEVEL_0_NOMINAL', faultProbability: 0.02,
   xaiAttribution: { tempWeight: 33.3, pressWeight: 33.3, humWeight: 33.4, primaryParameter: 'None', diagnosticNote: 'Nominal baseline' },
+  mlPrediction: { mlClassification: 'NOMINAL_OPERATION', mlConfidence: 0.99, agreesWithRules: true },
   operationalAction: 'Observation verified compliant with WMO Pub No. 8 & IMD Quality Standards.', ticketId: null,
   securitySeal: {
     hmacSha256: '0x8f4a19b2e041',
@@ -155,10 +158,11 @@ function generateHistoricalTimeline(s: IMDStationProfile, timeframe: '1H' | '6H'
 
 export const GovObservationConsole = React.memo<Props>(function GovObservationConsole({
   selectedStation, onSelectStation, packets, language,
-  isLiveApiMode = true, onToggleLiveApiMode, liveStatusInfo, isSyncingLive = false, onManualSync,
+  isLiveApiMode = true, onToggleLiveApiMode, liveStatusInfo, isSyncingLive = false, onManualSync, onSimulateFault,
 }) {
   const [mounted, setMounted] = useState(false);
-  const [isMissionControlVibe, setIsMissionControlVibe] = useState(true);
+  const [isMissionControlVibe, setIsMissionControlVibe] = useState(false);
+  const [viewMode, setViewMode] = useState<'plain' | 'technical'>('plain');
   const [timelineFilter, setTimelineFilter] = useState<'LIVE' | '1H' | '6H' | '24H'>('LIVE');
   const [isLinkSevered, setIsLinkSevered] = useState<boolean>(false);
   const [bufferedPackets, setBufferedPackets] = useState<number>(0);
@@ -195,7 +199,7 @@ export const GovObservationConsole = React.memo<Props>(function GovObservationCo
   const active = useMemo(() => packets.length > 0 ? packets : [makeFallback(selectedStation)], [packets, selectedStation]);
   const recent10 = useMemo(() => [...active].slice(-10).reverse(), [active]);
 
-  const liveChartData: StationChartPoint[] = useMemo(() => active.map(p => ({
+  const liveChartData: StationChartPoint[] = useMemo(() => active.slice(-29).map(p => ({
     time: p.timeIST,
     temperature: p.raw.temperature,
     pressure: p.raw.pressure,
@@ -235,13 +239,12 @@ export const GovObservationConsole = React.memo<Props>(function GovObservationCo
           <div className="p-1.5 bg-[#002147] text-white rounded"><Building2 className="w-4 h-4" /></div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className={`text-sm font-bold uppercase tracking-wide ${isMissionControlVibe ? 'text-emerald-400 font-mono flex items-center gap-1.5' : 'text-[#002147]'}`}>
-                {isMissionControlVibe && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />}
+              <h2 className={`text-sm font-bold uppercase tracking-wide ${isMissionControlVibe ? 'text-sky-300 font-mono flex items-center gap-1.5' : 'text-[#002147]'}`}>
                 {language === 'hi' ? 'प्राथमिक अवलोकन एवं टेलीमेट्री कंसोल' : 'Primary Observation & Telemetry Console (SIH26073)'}
               </h2>
               {isMissionControlVibe && (
-                <span className="text-[9px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800 px-1.5 py-0.2 rounded animate-pulse">
-                  SOVEREIGN ZERO-TRUST HUD
+                <span className="text-[9px] font-mono font-bold bg-sky-950/80 text-sky-300 border border-sky-800/80 px-1.5 py-0.5 rounded">
+                  WMO PUB 8 • IMD AWS NETWORK
                 </span>
               )}
             </div>
@@ -253,58 +256,102 @@ export const GovObservationConsole = React.memo<Props>(function GovObservationCo
         <div className="flex items-center gap-3 flex-wrap">
           <div className={`flex items-center gap-2 border rounded px-2.5 py-1 text-xs shadow-2xs transition-colors ${
             isMissionControlVibe
-              ? 'bg-slate-900 border-emerald-500/40 text-emerald-300'
-              : isLiveApiMode ? 'bg-emerald-50/50 border-emerald-300' : 'bg-amber-50/50 border-amber-300'
+              ? 'bg-slate-900/90 border-slate-800 text-slate-200'
+              : isLiveApiMode
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+              : 'bg-amber-50 border-amber-300 text-amber-950'
           }`}>
-            <span className={`w-2.5 h-2.5 rounded-full ${isLiveApiMode ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-amber-500'}`} />
-            <div className="flex flex-col leading-tight">
-              <span className={`font-bold uppercase tracking-wider text-[9px] ${isLiveApiMode ? 'text-emerald-700' : 'text-amber-700'}`}>Data Provenance</span>
+            <span className={`w-2 h-2 rounded-full ${isSyncingLive ? 'bg-sky-400 animate-spin' : isLiveApiMode ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
+                Data Provenance:
+              </span>
               <span className={`font-bold ${isMissionControlVibe ? 'text-emerald-300' : isLiveApiMode ? 'text-emerald-900' : 'text-amber-900'}`}>
-                {isLiveApiMode
-                  ? liveStatusInfo?.source === 'WEATHERSTACK_API'
-                    ? 'Weatherstack Real-Time API'
-                    : 'Live Satellite Downlink'
-                  : 'Simulated NWP Model'}
+                {isLiveApiMode ? 'Live Satellite Downlink' : 'Simulated Testbench'}
               </span>
+              {liveStatusInfo && isLiveApiMode && (
+                <span className={`hidden sm:inline-block text-[10px] font-mono border-l pl-2 ml-1 ${isMissionControlVibe ? 'text-slate-400 border-slate-700' : 'text-slate-600 border-slate-300'}`}>
+                  {liveStatusInfo.temperature}°C | {liveStatusInfo.pressure}hPa | {liveStatusInfo.humidity}%
+                </span>
+              )}
             </div>
-            {liveStatusInfo && isLiveApiMode && (
-              <span className={`hidden lg:inline-block text-[10px] font-mono border-l pl-2 ml-1 ${isMissionControlVibe ? 'text-emerald-400 border-slate-700' : 'text-emerald-800 border-emerald-200'}`}>
-                {liveStatusInfo.temperature}°C | {liveStatusInfo.pressure}hPa | {liveStatusInfo.humidity}%
-                {liveStatusInfo.source === 'WEATHERSTACK_API' && <span className="ml-1 text-[9px] text-sky-700 font-bold bg-sky-100 px-1 rounded">WS</span>}
-              </span>
-            )}
-            <div className="ml-1 sm:ml-2 flex items-center gap-1.5 border-l border-slate-200 pl-2 sm:pl-3">
+            <div className="flex items-center gap-1 border-l border-slate-700/60 pl-2 ml-1">
               {onToggleLiveApiMode && (
-                <button type="button" onClick={onToggleLiveApiMode} className="text-[10px] font-bold px-2 py-1 rounded bg-white hover:bg-slate-50 text-[#002147] border border-slate-300 transition-colors shadow-2xs cursor-pointer">
-                  {isLiveApiMode ? 'Switch to Sim' : 'Activate Live API'}
+                <button
+                  type="button"
+                  onClick={onToggleLiveApiMode}
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                    isLiveApiMode
+                      ? 'bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700'
+                      : 'bg-emerald-900 border-emerald-600 text-emerald-200 hover:bg-emerald-800'
+                  }`}
+                  title={isLiveApiMode ? 'Switch to Deterministic WMO Benchmark Simulation' : 'Switch to Live Open-Meteo Satellite Feed'}
+                >
+                  {isLiveApiMode ? 'Switch to Sim' : 'Switch to Live'}
                 </button>
               )}
               {onManualSync && isLiveApiMode && (
-                <button type="button" onClick={onManualSync} disabled={isSyncingLive} className="text-[10px] font-bold px-2 py-1 rounded bg-[#002147] hover:bg-[#0B3B60] text-white transition-colors disabled:opacity-50 cursor-pointer shadow-2xs">
-                  {isSyncingLive ? 'Syncing...' : '↻ Sync'}
+                <button
+                  type="button"
+                  onClick={onManualSync}
+                  disabled={isSyncingLive}
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors flex items-center gap-0.5 disabled:opacity-50 cursor-pointer"
+                  title="Manual sync live weather for selected station"
+                >
+                  <RotateCw className={`w-2.5 h-2.5 ${isSyncingLive ? 'animate-spin' : ''}`} />
+                  <span>Sync</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* Vibe Coded Cyber HUD Button */}
+          {/* Plain-Language vs Technical WMO Mode Toggle */}
+          <div className="flex items-center rounded border border-slate-700 bg-slate-900/90 p-0.5 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setViewMode('plain')}
+              className={`px-2.5 py-1 rounded transition-colors cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'plain'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+              title="Plain-language human explanation of which sensor has a problem"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>{language === 'hi' ? 'सरल भाषा (सेंसर जांच)' : 'Plain Language (Which Sensor?)'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('technical')}
+              className={`px-2.5 py-1 rounded transition-colors cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'technical'
+                  ? 'bg-sky-600 text-white font-bold shadow-xs'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+              title="Technical WMO Pub 8 physics and Zahumenský XAI attribution"
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              <span>{language === 'hi' ? 'तकनीकी WMO मेट्रिक्स' : 'Technical (WMO QC)'}</span>
+            </button>
+          </div>
+
+          {/* Institutional Contrast Toggle */}
           <button
             type="button"
             onClick={() => setIsMissionControlVibe(prev => !prev)}
-            className={`text-xs font-bold px-2.5 py-1.5 rounded flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+            className={`text-xs font-semibold px-2.5 py-1.5 rounded flex items-center gap-1.5 transition-all border cursor-pointer ${
               isMissionControlVibe
-                ? 'bg-emerald-500 text-slate-950 font-mono ring-2 ring-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.8)]'
-                : 'bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/40'
+                ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
             }`}
-            title="Toggle High-Tech Mission Control Cyber HUD Mode"
+            title="Toggle Console View Contrast"
           >
-            <Sparkles className={`w-3.5 h-3.5 ${isMissionControlVibe ? 'animate-spin' : ''}`} />
-            <span>{isMissionControlVibe ? 'Cyber HUD: ACTIVE' : '⚡ Cyber Vibe HUD'}</span>
+            <span>{isMissionControlVibe ? 'Terminal View' : 'Document View'}</span>
           </button>
 
           <div className="flex items-center gap-2">
             <label htmlFor="station-selector" className={`text-xs font-semibold whitespace-nowrap ${isMissionControlVibe ? 'text-slate-300' : 'text-slate-700'}`}>{language === 'hi' ? 'स्टेशन चुनें:' : 'Select AWS Node:'}</label>
-            <select id="station-selector" value={s.stationId} onChange={e => onSelectStation(e.target.value)} className={`text-xs font-semibold rounded px-3 py-1.5 focus:outline-none ${isMissionControlVibe ? 'bg-slate-900 border border-slate-700 text-emerald-300' : 'bg-[#F8FAFC] border border-slate-300 text-[#002147]'}`}>
+            <select id="station-selector" value={s.stationId} onChange={e => onSelectStation(e.target.value)} className={`text-xs font-semibold rounded px-3 py-1.5 focus:outline-none ${isMissionControlVibe ? 'bg-slate-900 border border-slate-700 text-sky-300' : 'bg-[#F8FAFC] border border-slate-300 text-[#002147]'}`}>
               {IMD_AWS_STATIONS.map(st => <option key={st.stationId} value={st.stationId}>{st.stationId} - {st.name.split(',')[0]} ({st.state}) {st.status === 'SCHEDULED_CALIBRATION' ? '[CALIBRATION]' : ''}</option>)}
             </select>
           </div>
@@ -318,59 +365,66 @@ export const GovObservationConsole = React.memo<Props>(function GovObservationCo
         </div>
       )}
 
-      {/* Station Datasheet */}
-      <div className="bg-[#F8FAFC] border border-slate-200 rounded p-3 text-xs">
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 mb-2.5">
-          <div className="flex items-center gap-2">
-            <span className="font-mono font-bold text-sm bg-white border border-slate-300 px-2 py-0.5 rounded text-[#002147]">{s.stationId}</span>
-            <span className="font-bold text-slate-800 text-sm">{s.name}</span>
-            <span className="text-slate-500 text-xs">({s.hindiName})</span>
-          </div>
-          <div className="flex items-center gap-3 text-[11px] text-slate-600 font-mono">
-            <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-red-600" />{s.latitude.toFixed(3)}°N, {s.longitude.toFixed(3)}°E</span>
-            <span>Elev: {s.elevationM}m MSL</span>
-            <span className="bg-slate-200 px-1.5 py-0.5 rounded font-bold text-slate-800">WMO: {s.wmoBlockNo}</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
-          {[
-            { label: 'Temperature Sensor', value: sm.tempSensor, note: 'Operating Limit: -10°C to 55°C' },
-            { label: 'Barometer Transducer', value: sm.pressureSensor, note: 'Operating Limit: 920 to 1050 hPa' },
-            { label: 'Humidity Hygrometer', value: sm.humiditySensor, note: 'Operating Limit: 5% to 100%' },
-          ].map(item => (
-            <div key={item.label} className="bg-white border border-slate-200 p-2 rounded">
-              <div className="text-slate-500 text-[10px] font-semibold uppercase">{item.label}</div>
-              <div className="font-medium text-slate-800 truncate" title={item.value}>{item.value}</div>
-              <div className="text-[10px] text-slate-500 mt-0.5">{item.note}</div>
+      {/* Plain Language Sensor Health Inspector */}
+      {viewMode === 'plain' && (
+        <GovPlainLanguageSensorCard station={s} packet={active[active.length - 1]} language={language} onSimulateFault={onSimulateFault} />
+      )}
+
+      {/* Technical Station Datasheet */}
+      {viewMode === 'technical' && (
+        <div className="bg-[#F8FAFC] border border-slate-200 rounded p-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 mb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="font-mono font-bold text-sm bg-white border border-slate-300 px-2 py-0.5 rounded text-[#002147]">{s.stationId}</span>
+              <span className="font-bold text-slate-800 text-sm">{s.name}</span>
+              <span className="text-slate-500 text-xs">({s.hindiName})</span>
             </div>
-          ))}
-          <div className="bg-white border border-slate-200 p-2 rounded">
-            <div className="text-slate-500 text-[10px] font-semibold uppercase flex items-center justify-between">
-              <span>Predictive Maintenance</span>
-              {(() => {
-                const faults = active.filter(p => p.classification !== 'NOMINAL_OPERATION' && p.classification !== 'GENUINE_CONVECTIVE_EVENT').length;
-                const score = Math.max(0, 100 - faults * 15);
-                const col = score >= 90 ? 'emerald' : score >= 70 ? 'amber' : 'rose';
-                return <span className={`text-${col}-700 font-bold text-[9px] bg-${col}-50 border border-${col}-200 px-1.5 py-0.5 rounded transition-colors shadow-2xs`}>Health: {score}/100</span>;
-              })()}
-            </div>
-            <div className="font-medium text-slate-800 flex items-center justify-between mt-0.5">
-              <span className="text-[11px] text-slate-600 truncate">Cal: {sm.lastCalibDate}</span>
-              <span className="text-emerald-700 font-bold font-mono text-[11px] flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                <BatteryMedium className="w-3.5 h-3.5 text-emerald-600" />Batt: {sm.batteryVoltage.split(' ')[0]}V
-              </span>
-            </div>
-            <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between truncate">
-              <span>Cert: {sm.calibCertNo.split('-').slice(-2).join('-')}</span>
-              <span className="text-slate-400 font-mono text-[9px]">Float Nominal</span>
+            <div className="flex items-center gap-3 text-[11px] text-slate-600 font-mono">
+              <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-red-600" />{s.latitude.toFixed(3)}°N, {s.longitude.toFixed(3)}°E</span>
+              <span>Elev: {s.elevationM}m MSL</span>
+              <span className="bg-slate-200 px-1.5 py-0.5 rounded font-bold text-slate-800">WMO: {s.wmoBlockNo}</span>
             </div>
           </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
+            {[
+              { label: 'Temperature Sensor', value: sm.tempSensor, note: 'Operating Limit: -10°C to 55°C' },
+              { label: 'Barometer Transducer', value: sm.pressureSensor, note: 'Operating Limit: 920 to 1050 hPa' },
+              { label: 'Humidity Hygrometer', value: sm.humiditySensor, note: 'Operating Limit: 5% to 100%' },
+            ].map(item => (
+              <div key={item.label} className="bg-white border border-slate-200 p-2 rounded">
+                <div className="text-slate-500 text-[10px] font-semibold uppercase">{item.label}</div>
+                <div className="font-medium text-slate-800 truncate" title={item.value}>{item.value}</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">{item.note}</div>
+              </div>
+            ))}
+            <div className="bg-white border border-slate-200 p-2 rounded">
+              <div className="text-slate-500 text-[10px] font-semibold uppercase flex items-center justify-between">
+                <span>Predictive Maintenance</span>
+                {(() => {
+                  const faults = active.filter(p => p.classification !== 'NOMINAL_OPERATION' && p.classification !== 'GENUINE_CONVECTIVE_EVENT').length;
+                  const score = Math.max(0, 100 - faults * 15);
+                  const col = score >= 90 ? 'emerald' : score >= 70 ? 'amber' : 'rose';
+                  return <span className={`text-${col}-700 font-bold text-[9px] bg-${col}-50 border border-${col}-200 px-1.5 py-0.5 rounded transition-colors shadow-2xs`}>Health: {score}/100</span>;
+                })()}
+              </div>
+              <div className="font-medium text-slate-800 flex items-center justify-between mt-0.5">
+                <span className="text-[11px] text-slate-600 truncate">Cal: {sm.lastCalibDate}</span>
+                <span className="text-emerald-700 font-bold font-mono text-[11px] flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  <BatteryMedium className="w-3.5 h-3.5 text-emerald-600" />Batt: {sm.batteryVoltage.split(' ')[0]}V
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between truncate">
+                <span>Cert: {sm.calibCertNo.split('-').slice(-2).join('-')}</span>
+                <span className="text-slate-400 font-mono text-[9px]">Float Nominal</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-[10px] text-slate-500 italic mt-2 border-t border-slate-200 pt-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <span>Benchmark station profile referencing public WMO registry (WMO Block ID: {s.wmoBlockNo}) with simulated telemetry pipeline.</span>
+            <span className="font-sans font-medium text-slate-600 not-italic">RMC Division: {s.rmcDivision}</span>
+          </div>
         </div>
-        <div className="text-[10px] text-slate-500 italic mt-2 border-t border-slate-200 pt-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <span>Benchmark station profile referencing public WMO registry (WMO Block ID: {s.wmoBlockNo}) with simulated telemetry pipeline.</span>
-          <span className="font-sans font-medium text-slate-600 not-italic">RMC Division: {s.rmcDivision}</span>
-        </div>
-      </div>
+      )}
 
       {/* Telemetry Link & Edge Buffer Simulation HUD */}
       <div className={`p-3 rounded-lg border flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs transition-all ${
@@ -447,6 +501,85 @@ export const GovObservationConsole = React.memo<Props>(function GovObservationCo
             <strong>{burstToast}</strong>
           </span>
           <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-bold uppercase">WMO SEAL VERIFIED</span>
+        </div>
+      )}
+
+      {/* 3-Tier WMO QC & Explainable AI (XAI) Attribution Bar */}
+      {recent10[0] && (
+        <div className={`p-3 rounded-lg border text-xs space-y-2.5 transition-all ${
+          isMissionControlVibe
+            ? 'bg-slate-900/90 border-emerald-500/40 text-slate-100 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+            : 'bg-white border-slate-300 text-slate-800 shadow-xs'
+        }`}>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/40 pb-2">
+            <div className="flex items-center gap-2">
+              <span className={`font-extrabold uppercase tracking-wider text-xs flex items-center gap-1.5 ${isMissionControlVibe ? 'text-emerald-400' : 'text-[#002147]'}`}>
+                <Cpu className="w-4 h-4 text-sky-500" />
+                3-Tier WMO QC &amp; Explainable AI (XAI) Attribution
+              </span>
+              <span className="bg-sky-500/10 text-sky-400 text-[10px] font-mono px-2 py-0.5 rounded border border-sky-500/30 font-bold">
+                Zahumenský § 4.3
+              </span>
+              {(recent10[0] as unknown as { isHardwareGrounded?: boolean }).isHardwareGrounded && (
+                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-mono px-2 py-0.5 rounded border border-emerald-500/40 font-bold flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Hardware Sensor Grounded
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] font-mono">
+              <span>Primary Driver: <strong className="text-amber-400">{recent10[0].xaiAttribution.primaryParameter || 'Nominal'}</strong></span>
+              <span>•</span>
+              <span className="text-slate-400">{recent10[0].xaiAttribution.diagnosticNote}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Temp Weight */}
+            <div className="space-y-1 p-2 rounded bg-slate-50/60 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800">
+              <div className="flex justify-between text-[11px]">
+                <span className="font-semibold">Temperature ($T$) Blame</span>
+                <span className="font-mono font-bold text-rose-500">{recent10[0].xaiAttribution.tempWeight}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-rose-500 rounded-full transition-all duration-500" style={{ width: `${recent10[0].xaiAttribution.tempWeight}%` }} />
+              </div>
+              <div className="text-[10px] text-slate-500 flex justify-between">
+                <span>RoC: {recent10[0].ratesOfChange.tempRoC}°C/min</span>
+                <span>WMO Limit: ±0.3°C</span>
+              </div>
+            </div>
+
+            {/* Pressure Weight */}
+            <div className="space-y-1 p-2 rounded bg-slate-50/60 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800">
+              <div className="flex justify-between text-[11px]">
+                <span className="font-semibold">Pressure ($P$) Blame</span>
+                <span className="font-mono font-bold text-sky-500">{recent10[0].xaiAttribution.pressWeight}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-sky-500 rounded-full transition-all duration-500" style={{ width: `${recent10[0].xaiAttribution.pressWeight}%` }} />
+              </div>
+              <div className="text-[10px] text-slate-500 flex justify-between">
+                <span>RoC: {recent10[0].ratesOfChange.pressRoC} hPa/10m</span>
+                <span>WMO Limit: ±2.0 hPa</span>
+              </div>
+            </div>
+
+            {/* Humidity Weight */}
+            <div className="space-y-1 p-2 rounded bg-slate-50/60 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800">
+              <div className="flex justify-between text-[11px]">
+                <span className="font-semibold">Humidity ($RH$) Blame</span>
+                <span className="font-mono font-bold text-indigo-500">{recent10[0].xaiAttribution.humWeight}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${recent10[0].xaiAttribution.humWeight}%` }} />
+              </div>
+              <div className="text-[10px] text-slate-500 flex justify-between">
+                <span>RoC: {recent10[0].ratesOfChange.humRoC}%/10m</span>
+                <span>Coupling: {recent10[0].classification === 'GENUINE_CONVECTIVE_EVENT' ? 'Frontal Squall' : 'Nominal'}</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -594,7 +727,7 @@ export const GovObservationConsole = React.memo<Props>(function GovObservationCo
         <div className="border border-slate-300 rounded bg-[#FAFAFA] p-2.5">
           <div className="h-64 w-full">
             {mounted && chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
                 <LineChart data={chartData} margin={{ top: 28, right: 20, left: -10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                   <XAxis dataKey="time" stroke="#64748B" tick={{ fontSize: 10 }} />

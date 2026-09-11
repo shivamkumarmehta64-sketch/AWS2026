@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   X,
   Smartphone,
@@ -163,9 +164,12 @@ export const GovMobileQRModal: React.FC<GovMobileQRModalProps> = ({
             
             {qrDataUrl ? (
               <div className="relative z-10 p-2 bg-white rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] border-2 border-emerald-400 transition-transform hover:scale-105">
-                <img
+                <Image
                   src={qrDataUrl}
                   alt="Scan to open Mobile AWS Edge Node"
+                  width={208}
+                  height={208}
+                  unoptimized
                   className="w-44 h-44 sm:w-52 sm:h-52 rounded"
                 />
               </div>

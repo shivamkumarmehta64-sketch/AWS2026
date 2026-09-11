@@ -91,3 +91,9 @@ export const IMD_AWS_STATIONS: IMDStationProfile[] = STATIONS.map(expand);
 
 export const getStationProfile = (id: string): IMDStationProfile =>
   IMD_AWS_STATIONS.find((s) => s.stationId === id) || IMD_AWS_STATIONS[0];
+
+// Re-export open-access live meteorological services directly from stationData
+export { fetchLiveStationObservation, fetchBatchLiveObservations } from './liveWeatherService';
+export type { LiveObservation } from './liveWeatherService';
+export { useLiveStationWeather } from '@/hooks/useLiveStationWeather';
+export type { UseLiveStationWeatherResult } from '@/hooks/useLiveStationWeather';

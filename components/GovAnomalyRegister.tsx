@@ -78,7 +78,7 @@ export const GovAnomalyRegister = React.memo<Props>(function GovAnomalyRegister(
         </div>
       )}
 
-      <div className="overflow-x-auto border border-slate-300 rounded">
+      <div className="overflow-x-auto border border-slate-300 rounded content-visibility-auto">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="bg-[#002147] text-white font-semibold text-[11px]">
@@ -87,7 +87,7 @@ export const GovAnomalyRegister = React.memo<Props>(function GovAnomalyRegister(
               ))}
             </tr>
           </thead>
-          <tbody suppressHydrationWarning className="divide-y divide-slate-200 font-mono text-[11px]">
+          <tbody suppressHydrationWarning className="divide-y divide-slate-200 font-mono tabular-nums text-[11px]">
             {workOrders.length === 0 ? (
               <tr><td colSpan={8} className="py-8 text-center text-slate-500 font-sans">
                 <div className="flex flex-col items-center justify-center gap-1">

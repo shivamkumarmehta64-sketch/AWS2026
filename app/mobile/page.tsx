@@ -13,11 +13,21 @@ import {
   ArrowLeft,
   RefreshCw,
   Sliders,
-  ShieldCheck
+  ShieldCheck,
+  Compass,
+  Wind,
+  Sun,
+  BatteryCharging,
+  Copy,
+  Check,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import Link from 'next/link';
-import { IMD_AWS_STATIONS, getStationProfile } from '@/lib/stationData';
+import Image from 'next/image';
+import { getStationProfile } from '@/lib/stationData';
 import { TelemetryPacket } from '@/lib/anomalyLogic';
+import { useMobileSensors } from '@/hooks/useMobileSensors';
 
 // Predefined Indian Meteorological Cities for instant 1-tap live weather
 const INDIAN_CITIES = [
@@ -61,12 +71,31 @@ export default function MobileEdgeNodePage() {
   const [streamIntervalMs] = useState<number>(2500);
   const [selectedCity, setSelectedCity] = useState<string>('New Delhi (Safdarjung)');
   const [liveDataStatus, setLiveDataStatus] = useState<string | null>(null);
+  const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
+  const [isJsonCopied, setIsJsonCopied] = useState<boolean>(false);
+
+  // Hardware Sensors Hook (Expanded with Compass, Shake-to-Gust, Solar, Battery, Haptics & Audio)
+  const {
+    pressure: hardwarePressure,
+    isHardwareActive,
+    sensorSource,
+    compassHeading,
+    compassCardinal,
+    isOrientationActive,
+    windGustKph,
+    isShaking,
+    solarRadiationWm2,
+    batteryVoltage,
+    batteryLevel,
+    triggerHaptic,
+    playTelemetryChime,
+  } = useMobileSensors();
 
   // Fetch real live weather for any latitude/longitude (Weatherstack + Open-Meteo)
   const fetchRealWeatherForCoords = useCallback(async (lat: number, lon: number, locationLabel?: string) => {
     setIsLocating(true);
     try {
-      // 1. Query server-side proxy (uses Weatherstack if API key is set in .env.local)
+      // 1. Query server-side proxy
       const proxyUrl = `/api/weather?lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}&stationId=AWS-MOB-01`;
       const res = await fetch(proxyUrl);
       if (res.ok) {
@@ -79,7 +108,7 @@ export default function MobileEdgeNodePage() {
           if (!isNaN(p)) setPress(Math.round(p * 10) / 10);
           if (!isNaN(h)) setHumidity(Math.round(h * 10) / 10);
           const provName = payload.provider === 'WEATHERSTACK' ? 'Weatherstack API' : 'Open-Meteo';
-          setLiveDataStatus(`Live Real Weather Synced via ${provName}: ${locationLabel || `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`} at ${new Date().toLocaleTimeString('en-IN', { hour12: false })}`);
+          setLiveDataStatus(`Live Weather Synced via ${provName}: ${locationLabel || `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`} at ${new Date().toLocaleTimeString('en-IN', { hour12: false })}`);
           return;
         }
       }
@@ -96,7 +125,7 @@ export default function MobileEdgeNodePage() {
           if (!isNaN(t)) setTemp(Math.round(t * 10) / 10);
           if (!isNaN(p)) setPress(Math.round(p * 10) / 10);
           if (!isNaN(h)) setHumidity(Math.round(h * 10) / 10);
-          setLiveDataStatus(`Live Real Weather Synced: ${locationLabel || `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`} at ${new Date().toLocaleTimeString('en-IN', { hour12: false })}`);
+          setLiveDataStatus(`Live Weather Synced: ${locationLabel || `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`} at ${new Date().toLocaleTimeString('en-IN', { hour12: false })}`);
         }
       }
     } catch {
@@ -130,7 +159,6 @@ export default function MobileEdgeNodePage() {
       (err) => {
         setIsLocating(false);
         setGpsError(`${err.message || 'GPS access denied'} — Selected City Feed Active`);
-        // Immediately fetch real weather for default selected city
         const city = INDIAN_CITIES.find(c => c.name === selectedCity) || INDIAN_CITIES[0];
         fetchRealWeatherForCoords(city.lat, city.lon, city.name);
       },
@@ -147,17 +175,28 @@ export default function MobileEdgeNodePage() {
 
   // Transmit telemetry packet to central Next.js server API
   const transmitObservation = useCallback(
-    async (override?: { t?: number; p?: number; h?: number }) => {
+    async (override?: { t?: number; p?: number; h?: number; w?: number; wd?: number; rain?: number }) => {
       setIsSending(true);
+      const activePressure = isHardwareActive && hardwarePressure !== null ? hardwarePressure : (override?.p !== undefined ? override.p : press);
+      const activeWind = override?.w !== undefined ? override.w : windGustKph;
+      const activeWindDir = override?.wd !== undefined ? override.wd : compassHeading;
+      const activeRain = override?.rain !== undefined ? override.rain : 0;
+
       const payload = {
         stationId,
         temperature: override?.t !== undefined ? override.t : temp,
-        pressure: override?.p !== undefined ? override.p : press,
+        pressure: activePressure,
         humidity: override?.h !== undefined ? override.h : humidity,
+        windSpeed: activeWind,
+        windDirection: activeWindDir,
+        rainfall: activeRain,
+        solarRadiation: solarRadiationWm2,
+        batteryVoltage: batteryVoltage,
         timestamp: Date.now(),
         lat: gpsCoords?.lat,
         lon: gpsCoords?.lon,
-        deviceName: typeof navigator !== 'undefined' && navigator.userAgent.includes('iPhone') ? 'iPhone Field Sensor' : 'Android Field Sensor',
+        deviceName: typeof navigator !== 'undefined' && navigator.userAgent.includes('iPhone') ? 'iPhone Field Sensor Node' : 'Android Field Sensor Node',
+        sensorSource,
       };
 
       try {
@@ -171,10 +210,15 @@ export default function MobileEdgeNodePage() {
         setPacketCounter((prev) => prev + 1);
         setLastTransmittedTime(new Date().toLocaleTimeString('en-IN', { hour12: false }));
 
+        if (!isAudioMuted) {
+          playTelemetryChime(920, 0.04);
+        }
+        triggerHaptic(40);
+
         if (data && data.data) {
           setLastServerVerdict(data.data);
 
-          // Broadcast via BroadcastChannel if supported for same-device/browser testing
+          // Broadcast via BroadcastChannel for same-device cross-tab testing
           if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
             const channel = new BroadcastChannel('imd_naws_telemetry_stream');
             channel.postMessage({ type: 'MOBILE_PACKET_INGEST', packet: data.data });
@@ -187,14 +231,29 @@ export default function MobileEdgeNodePage() {
         setIsSending(false);
       }
     },
-    [stationId, temp, press, humidity, gpsCoords]
+    [
+      stationId,
+      temp,
+      press,
+      humidity,
+      gpsCoords,
+      isHardwareActive,
+      hardwarePressure,
+      sensorSource,
+      windGustKph,
+      compassHeading,
+      solarRadiationWm2,
+      batteryVoltage,
+      isAudioMuted,
+      playTelemetryChime,
+      triggerHaptic,
+    ]
   );
 
   // Auto-stream loop
   useEffect(() => {
     if (!isAutoStreaming) return;
     const timer = setInterval(() => {
-      // Add slight diurnal realistic Brownian micro-jitter
       const jitterT = Math.round((temp + (Math.random() - 0.5) * 0.1) * 10) / 10;
       const jitterP = Math.round((press + (Math.random() - 0.5) * 0.1) * 10) / 10;
       const jitterH = Math.round((humidity + (Math.random() - 0.5) * 0.2) * 10) / 10;
@@ -204,31 +263,40 @@ export default function MobileEdgeNodePage() {
     return () => clearInterval(timer);
   }, [isAutoStreaming, streamIntervalMs, temp, press, humidity, transmitObservation]);
 
-  // Fault Injections
+  // Fault Injections with Acoustic and Haptic Confirmation
   const handleInjectSquall = () => {
-    const squallP = Math.round((press - 2.8) * 10) / 10;
-    const squallH = Math.min(99, Math.round((humidity + 18.5) * 10) / 10);
-    const squallT = Math.round((temp - 3.4) * 10) / 10;
+    const squallP = Math.round((press - 3.4) * 10) / 10;
+    const squallH = Math.min(99, Math.round((humidity + 20.0) * 10) / 10);
+    const squallT = Math.round((temp - 3.8) * 10) / 10;
+    const squallW = 78.5; // Severe squall gust
+    const squallRain = 14.2;
     setPress(squallP);
     setHumidity(squallH);
     setTemp(squallT);
-    transmitObservation({ t: squallT, p: squallP, h: squallH });
+    triggerHaptic([200, 100, 300]);
+    if (!isAudioMuted) playTelemetryChime(440, 0.25);
+    transmitObservation({ t: squallT, p: squallP, h: squallH, w: squallW, rain: squallRain });
   };
 
   const handleInjectSpike = () => {
     const spikeT = 54.8;
     setTemp(spikeT);
+    triggerHaptic([300, 100, 300]);
+    if (!isAudioMuted) playTelemetryChime(220, 0.3);
     transmitObservation({ t: spikeT });
   };
 
   const handleInjectFreeze = () => {
-    // Send identical frozen readings
+    triggerHaptic([150, 100, 150]);
+    if (!isAudioMuted) playTelemetryChime(600, 0.15);
     transmitObservation({ t: temp, p: press, h: humidity });
   };
 
   const handleInjectDrift = () => {
-    const driftP = Math.round((press - 0.4) * 10) / 10;
+    const driftP = Math.round((press - 0.45) * 10) / 10;
     setPress(driftP);
+    triggerHaptic([100, 50, 100]);
+    if (!isAudioMuted) playTelemetryChime(520, 0.15);
     transmitObservation({ p: driftP });
   };
 
@@ -237,107 +305,122 @@ export default function MobileEdgeNodePage() {
     setTemp(defaultProfile.baseline.tempMean);
     setPress(defaultProfile.baseline.pressureMean);
     setHumidity(defaultProfile.baseline.humidityMean);
+    triggerHaptic(80);
+    if (!isAudioMuted) playTelemetryChime(1040, 0.1);
     transmitObservation({
       t: defaultProfile.baseline.tempMean,
       p: defaultProfile.baseline.pressureMean,
       h: defaultProfile.baseline.humidityMean,
+      w: 15.0,
+      rain: 0,
     });
   };
 
+  const copyTelemetryJson = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && lastServerVerdict) {
+      navigator.clipboard.writeText(JSON.stringify(lastServerVerdict, null, 2));
+      setIsJsonCopied(true);
+      setTimeout(() => setIsJsonCopied(false), 2000);
+    }
+  };
+
   return (
-    <div className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans max-w-md mx-auto shadow-2xl border-x border-slate-800">
-      {/* Top Header */}
-      <header className="bg-[#002147] border-b-2 border-amber-400 px-4 py-3 sticky top-0 z-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <h1 className="text-xs font-black tracking-wider uppercase text-amber-400">
-                  SIH 6073 Mobile Edge Node
-                </h1>
-              </div>
-              <p className="text-[10px] text-slate-300">Zero-Cost Crowdsourced Weather Network</p>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none antialiased">
+      {/* Indian National Tricolor Top Line */}
+      <div className="flex w-full h-1">
+        <div className="flex-1 bg-[#FF9933]"></div>
+        <div className="flex-1 bg-white"></div>
+        <div className="flex-1 bg-[#138808]"></div>
+      </div>
+
+      {/* Sovereign Top Masthead */}
+      <header className="bg-[#002147] border-b border-slate-800 px-3.5 py-2.5 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/dashboard"
+            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 transition-colors"
+            title="Return to National Ops Dashboard"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-amber-400/80 bg-white flex items-center justify-center shrink-0">
+            <Image src="/jatayu-seal.jpg" alt="JATAYU Emblem" width={32} height={32} className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <div className="font-bold text-xs tracking-wide text-white flex items-center gap-1.5">
+              <span>PROJECT JATAYU</span>
+              <span className="text-[9px] bg-amber-400 text-slate-950 font-mono font-extrabold px-1.5 py-0.2 rounded">
+                MOBILE NODE
+              </span>
+            </div>
+            <div className="text-[10px] text-slate-300 font-mono">
+              ID: {stationId} • {packetCounter} frames
             </div>
           </div>
+        </div>
 
-          <div className="text-right">
-            <span className="text-[9px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Live Auto-Stream
-            </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsAudioMuted(!isAudioMuted)}
+            className={`p-1.5 rounded border text-xs transition-colors ${
+              isAudioMuted ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-sky-950 border-sky-600 text-sky-300'
+            }`}
+            title={isAudioMuted ? 'Sound Muted' : 'Acoustic Chime Active'}
+          >
+            {isAudioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+          </button>
+          <div className="flex items-center gap-1 bg-emerald-950/80 border border-emerald-600 text-emerald-300 text-[10px] font-mono px-2 py-0.5 rounded-full">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>UPLINK LIVE</span>
           </div>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {/* GPS Hardware Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-300 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-sky-400" />
-              Venue GPS Coordinates
+      <main className="flex-1 p-3.5 space-y-3 max-w-lg mx-auto w-full">
+        {/* Hardware Status Strip */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2 text-xs">
+          <div className="flex items-center justify-between text-slate-300">
+            <span className="font-bold flex items-center gap-1.5 text-[#38bdf8]">
+              <MapPin className="w-3.5 h-3.5" />
+              On-Site Geolocation &amp; Coordinates
             </span>
             <button
               onClick={requestGpsLocation}
               disabled={isLocating}
-              className="text-[10px] font-semibold text-sky-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer"
+              className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1 disabled:opacity-50"
             >
-              <RefreshCw className={`w-3 h-3 ${isLocating ? 'animate-spin' : ''}`} />
-              <span>{isLocating ? 'Acquiring...' : 'Refresh GPS'}</span>
+              <RefreshCw className={`w-3 h-3 ${isLocating ? 'animate-spin text-amber-400' : ''}`} />
+              <span>{isLocating ? 'Fixing...' : 'Sync GPS'}</span>
             </button>
           </div>
 
-          {gpsCoords ? (
-            <div className="grid grid-cols-3 gap-2 bg-slate-950 p-2.5 rounded-lg font-mono text-xs text-center border border-slate-800/80">
-              <div>
-                <div className="text-[9px] text-slate-400 uppercase font-sans">Latitude</div>
-                <div className="font-bold text-emerald-400">{gpsCoords.lat}° N</div>
-              </div>
-              <div>
-                <div className="text-[9px] text-slate-400 uppercase font-sans">Longitude</div>
-                <div className="font-bold text-emerald-400">{gpsCoords.lon}° E</div>
-              </div>
-              <div>
-                <div className="text-[9px] text-slate-400 uppercase font-sans">Accuracy</div>
-                <div className="font-bold text-sky-400">±{gpsCoords.accuracy}m</div>
-              </div>
+          <div className="flex items-center justify-between font-mono text-[11px] bg-slate-950 p-2 rounded border border-slate-800">
+            <div>
+              <span className="text-slate-500">LAT:</span>{' '}
+              <strong className="text-emerald-400">{gpsCoords ? `${gpsCoords.lat.toFixed(3)}°N` : '28.585°N'}</strong>
             </div>
-          ) : (
-            <div className="bg-slate-950/60 p-2.5 rounded-lg text-[11px] text-slate-400 text-center">
-              {gpsError ? (
-                <span className="text-amber-400">{gpsError} (Using Default Delhi Baseline)</span>
-              ) : (
-                'Requesting smartphone hardware GPS...'
-              )}
+            <div>
+              <span className="text-slate-500">LON:</span>{' '}
+              <strong className="text-emerald-400">{gpsCoords ? `${gpsCoords.lon.toFixed(3)}°E` : '77.206°E'}</strong>
+            </div>
+            <div>
+              <span className="text-slate-500">ACC:</span>{' '}
+              <strong className="text-slate-300">{gpsCoords ? `±${gpsCoords.accuracy}m` : '±15m'}</strong>
+            </div>
+          </div>
+
+          {gpsError && (
+            <div className="text-[10px] text-amber-400/90 bg-amber-950/30 px-2 py-1 rounded border border-amber-900/50">
+              {gpsError}
             </div>
           )}
 
-          {/* City / Meteorological Observatory Selector for Real Live Data */}
-          <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-300 font-semibold text-[11px] flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                Select Indian AWS City:
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  const c = INDIAN_CITIES.find(x => x.name === selectedCity) || INDIAN_CITIES[0];
-                  fetchRealWeatherForCoords(c.lat, c.lon, c.name);
-                }}
-                disabled={isLocating}
-                className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer"
-              >
-                {isLocating ? 'Syncing...' : '↻ Pull Real Weather'}
-              </button>
-            </div>
+          {/* Preset Indian City Selector */}
+          <div className="space-y-1 pt-1">
+            <label className="text-[10px] uppercase font-bold text-slate-400">
+              Select Indian Climatic Region / AWS Base:
+            </label>
             <select
               value={selectedCity}
               onChange={(e) => {
@@ -363,23 +446,6 @@ export default function MobileEdgeNodePage() {
               </div>
             )}
           </div>
-
-          {/* Station Selector */}
-          <div className="flex items-center justify-between pt-1 text-xs">
-            <span className="text-slate-400 text-[11px]">Transmitting As:</span>
-            <select
-              value={stationId}
-              onChange={(e) => setStationId(e.target.value)}
-              className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400"
-            >
-              <option value="AWS-MOB-01">AWS-MOB-01 (Field Smartphone)</option>
-              {IMD_AWS_STATIONS.map((s) => (
-                <option key={s.stationId} value={s.stationId}>
-                  {s.stationId} — {s.name.split(',')[0]}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {/* Live Weather Readouts & Sliders */}
@@ -387,12 +453,12 @@ export default function MobileEdgeNodePage() {
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-slate-300 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-amber-400" />
-              Real-Time Atmospheric Measurements
+              Primary Atmospheric Measurements
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">Open-Meteo Verified</span>
+            <span className="text-[10px] text-slate-400 font-mono">WMO-No. 8 Compliant</span>
           </div>
 
-          {/* 3 Thermodynamic Gauges */}
+          {/* 3 Primary Thermodynamic Gauges */}
           <div className="grid grid-cols-3 gap-2">
             {/* Temp */}
             <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-center">
@@ -411,19 +477,29 @@ export default function MobileEdgeNodePage() {
             </div>
 
             {/* Pressure */}
-            <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-center">
-              <div className="text-[10px] uppercase font-bold text-sky-400">Pressure</div>
-              <div className="text-xl font-black text-slate-100 font-mono mt-0.5">{press.toFixed(1)}</div>
-              <div className="text-[9px] text-slate-400">hPa (Setra)</div>
-              <input
-                type="range"
-                min={920}
-                max={1050}
-                step={0.1}
-                value={press}
-                onChange={(e) => setPress(Number(e.target.value))}
-                className="w-full mt-1.5 accent-sky-500 cursor-pointer h-1 bg-slate-800 rounded"
-              />
+            <div className={`p-2.5 rounded-lg border text-center ${isHardwareActive ? 'bg-sky-950/40 border-sky-500/50' : 'bg-slate-950 border-slate-800'}`}>
+              <div className="text-[10px] uppercase font-bold text-sky-400">
+                {isHardwareActive ? 'Hardware Baro' : 'Pressure'}
+              </div>
+              <div className="text-xl font-black text-slate-100 font-mono mt-0.5">
+                {isHardwareActive && hardwarePressure !== null ? hardwarePressure.toFixed(1) : press.toFixed(1)}
+              </div>
+              <div className="text-[9px] text-slate-400">hPa (Setra 278)</div>
+              {isHardwareActive ? (
+                <div className="mt-1.5 px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[8px] rounded uppercase font-bold tracking-wider">
+                  Live Silicon Sensor
+                </div>
+              ) : (
+                <input
+                  type="range"
+                  min={920}
+                  max={1050}
+                  step={0.1}
+                  value={press}
+                  onChange={(e) => setPress(Number(e.target.value))}
+                  className="w-full mt-1.5 accent-sky-500 cursor-pointer h-1 bg-slate-800 rounded"
+                />
+              )}
             </div>
 
             {/* Humidity */}
@@ -443,7 +519,73 @@ export default function MobileEdgeNodePage() {
             </div>
           </div>
 
-          {/* Zero-Trust Hardware Cryptographic Envelope & Vibe HUD */}
+          {/* Enhanced Hardware Sensors: Compass Direction & Kinetic Wind Gust Gauge */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Interactive Compass / Wind Direction */}
+            <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center gap-3">
+              <div className="relative w-12 h-12 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center shrink-0">
+                <div
+                  className="w-1 h-10 bg-gradient-to-t from-slate-600 via-rose-500 to-rose-500 rounded-full transition-transform duration-150"
+                  style={{ transform: `rotate(${compassHeading}deg)` }}
+                />
+                <div className="absolute text-[9px] font-bold text-white font-mono bg-slate-950/80 px-1 rounded">
+                  {compassCardinal}
+                </div>
+              </div>
+              <div className="space-y-0.5 min-w-0">
+                <div className="text-[9px] uppercase font-bold text-indigo-300 flex items-center gap-1">
+                  <Compass className="w-3 h-3 text-indigo-400" />
+                  <span>Wind Vane</span>
+                </div>
+                <div className="text-sm font-bold text-slate-100 font-mono">
+                  {compassHeading}° <span className="text-xs text-indigo-300">({compassCardinal})</span>
+                </div>
+                <div className="text-[8px] text-slate-400 leading-none">
+                  {isOrientationActive ? 'Live Hardware Compass' : 'Turn phone to rotate'}
+                </div>
+              </div>
+            </div>
+
+            {/* Kinetic Accelerometer / Shake to Gust */}
+            <div className={`p-2.5 rounded-lg border flex items-center gap-3 transition-colors ${
+              isShaking ? 'bg-amber-950/60 border-amber-500/80 animate-pulse' : 'bg-slate-950 border-slate-800'
+            }`}>
+              <div className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0">
+                <Wind className={`w-5 h-5 ${isShaking ? 'text-amber-400 animate-bounce' : 'text-sky-400'}`} />
+              </div>
+              <div className="space-y-0.5 min-w-0">
+                <div className="text-[9px] uppercase font-bold text-sky-300 flex items-center gap-1">
+                  <span>Anemometer</span>
+                </div>
+                <div className="text-sm font-bold text-slate-100 font-mono">
+                  {windGustKph.toFixed(1)} <span className="text-[10px] text-slate-400">km/h</span>
+                </div>
+                <div className="text-[8px] text-amber-300/90 leading-none font-medium truncate">
+                  {isShaking ? '⚠️ Squall Gust Active!' : 'Shake phone for gust'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Solar Irradiance & Battery Float Voltage */}
+          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+            <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1">
+                <Sun className="w-3 h-3 text-amber-400" />
+                <span>Solar Pyranometer:</span>
+              </span>
+              <span className="text-amber-300 font-bold">{solarRadiationWm2} W/m²</span>
+            </div>
+            <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1">
+                <BatteryCharging className="w-3 h-3 text-emerald-400" />
+                <span>Battery Voltage:</span>
+              </span>
+              <span className="text-emerald-300 font-bold">{batteryVoltage.toFixed(2)}V ({batteryLevel}%)</span>
+            </div>
+          </div>
+
+          {/* Zero-Trust Hardware Cryptographic Envelope HUD */}
           <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-[10px] space-y-1.5 font-mono">
             <div className="flex items-center justify-between">
               <span className="text-emerald-400 font-bold flex items-center gap-1 font-sans">
@@ -456,7 +598,7 @@ export default function MobileEdgeNodePage() {
             </div>
             <div className="text-[9px] text-slate-400 flex items-center justify-between border-t border-slate-900 pt-1">
               <span>Crypto Nonce: <strong className="text-emerald-300">#{((packetCounter * 7919 + 104821) % 999999).toString().padStart(6, '0')}</strong></span>
-              <span>Carrier: <strong className="text-sky-300">UHF 402.75 MHz</strong></span>
+              <span>Uplink: <strong className="text-sky-300">INSAT-3D 402.75 MHz</strong></span>
             </div>
             <div className="bg-slate-900/90 p-1.5 rounded border border-slate-800 text-[9px] text-slate-300 flex items-center justify-between">
               <span className="text-slate-500 uppercase font-sans">DCP Hex Frame:</span>
@@ -481,28 +623,28 @@ export default function MobileEdgeNodePage() {
               onClick={() => setIsAutoStreaming(!isAutoStreaming)}
               className={`py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border ${
                 isAutoStreaming
-                  ? 'bg-emerald-600 text-white border-emerald-400'
+                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
               }`}
             >
               <Radio className={`w-3.5 h-3.5 ${isAutoStreaming ? 'animate-pulse text-white' : 'text-slate-400'}`} />
-              <span>{isAutoStreaming ? 'Streaming (2.5s)' : 'Start Auto-Stream'}</span>
+              <span>{isAutoStreaming ? 'Auto-Streaming (2.5s)' : 'Start Auto-Stream'}</span>
             </button>
           </div>
         </div>
 
-        {/* Interactive Sensor Test Pad */}
+        {/* Interactive Sensor Test Pad (1-Tap Anomaly Triggers) */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-amber-400 flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5" />
-              Interactive Sensor Health &amp; Storm Test
+              Live Operational Stress &amp; Storm Test
             </span>
             <span className="text-[10px] text-slate-500 font-mono">1-Tap Live Test</span>
           </div>
 
-          <p className="text-[11px] text-slate-400">
-            <strong>Operational Field Test:</strong> Tap any button below to verify how our WMO engine instantly distinguishes between real severe weather and broken hardware sensors.
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            <strong>Meteorological Verification:</strong> Tap any button below to demonstrate how our WMO-No. 8 engine differentiates authentic extreme weather from sensor equipment failures in real time:
           </p>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
@@ -516,7 +658,7 @@ export default function MobileEdgeNodePage() {
                 <span>Simulate Severe Storm</span>
               </div>
               <div className="text-[10px] text-amber-300/80 leading-tight">
-                Sudden Pressure Drop + Rain (Verified as Real Weather)
+                Coupled Baro Drop + Squall (Verified WMO Flag 2: Approved)
               </div>
             </button>
 
@@ -530,7 +672,7 @@ export default function MobileEdgeNodePage() {
                 <span>Simulate Broken Wire</span>
               </div>
               <div className="text-[10px] text-red-300/80 leading-tight">
-                Temperature Spike to +54.8°C (Flagged as Sensor Fault)
+                Temp Spike to +54.8°C (Flagged WMO Flag 4: Quarantined)
               </div>
             </button>
 
@@ -541,10 +683,10 @@ export default function MobileEdgeNodePage() {
             >
               <div className="font-bold flex items-center gap-1.5 mb-1 text-xs">
                 <Wrench className="w-4 h-4 text-purple-400" />
-                <span>Simulate Frozen Sensor</span>
+                <span>Simulate Stuck ADC</span>
               </div>
               <div className="text-[10px] text-purple-300/80 leading-tight">
-                Readings Stuck with Zero Change (Flagged as Hardware Deadlock)
+                Zero Variance across 6 ticks (Flagged Hardware Deadlock)
               </div>
             </button>
 
@@ -558,32 +700,35 @@ export default function MobileEdgeNodePage() {
                 <span>Simulate Sensor Drift</span>
               </div>
               <div className="text-[10px] text-sky-300/80 leading-tight">
-                Gradual Error (Auto-Substituted with Backup Value)
+                Monotonic Baro Drift (Flagged WMO Flag 3: WMA Imputed)
               </div>
             </button>
           </div>
 
           <button
             onClick={handleResetToNominal}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 rounded-lg font-semibold text-xs transition-colors cursor-pointer"
+            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-lg font-semibold text-xs transition-colors cursor-pointer border border-slate-700 mt-1"
           >
-            ↺ Reset Sensor to Normal (Healthy)
+            ↺ Reset Sensor Node to Nominal Baseline (Healthy)
           </button>
         </div>
 
-        {/* Live Server Feedback Banner */}
+        {/* Live Server Feedback & Evaluation Banner */}
         {lastServerVerdict && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-1.5 text-xs">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-300">Server Evaluation Feedback</span>
-              <span className="text-[10px] font-mono text-slate-500">
+              <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                Central QMS Server Evaluation Feedback
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">
                 Pkt #{packetCounter} @ {lastTransmittedTime}
               </span>
             </div>
 
-            <div className="p-2 bg-slate-950 rounded border border-slate-800/80 space-y-1">
+            <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">WMO Classification:</span>
+                <span className="text-[11px] text-slate-400">WMO QC Determination:</span>
                 <span
                   className={`font-bold text-[10px] px-2 py-0.5 rounded font-mono ${
                     lastServerVerdict.wmoFlag === 'FLAG_1_VERIFIED_GOOD'
@@ -597,25 +742,33 @@ export default function MobileEdgeNodePage() {
                 </span>
               </div>
 
-              <div className="text-[10px] text-slate-300 pt-0.5">
+              <div className="text-[10px] text-slate-200 pt-0.5 leading-relaxed">
                 {lastServerVerdict.operationalAction}
               </div>
 
               {lastServerVerdict.xaiAttribution && (
-                <div className="text-[9px] text-slate-500 pt-1 flex justify-between font-mono">
-                  <span>T: {lastServerVerdict.xaiAttribution.tempWeight}%</span>
-                  <span>P: {lastServerVerdict.xaiAttribution.pressWeight}%</span>
-                  <span>RH: {lastServerVerdict.xaiAttribution.humWeight}%</span>
+                <div className="text-[9px] text-slate-400 pt-1 flex justify-between font-mono border-t border-slate-900">
+                  <span>Temp Attribution: {lastServerVerdict.xaiAttribution.tempWeight}%</span>
+                  <span>Pressure: {lastServerVerdict.xaiAttribution.pressWeight}%</span>
+                  <span>Humidity: {lastServerVerdict.xaiAttribution.humWeight}%</span>
                 </div>
               )}
             </div>
+
+            <button
+              onClick={copyTelemetryJson}
+              className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-mono text-[10px] flex items-center justify-center gap-1.5 border border-slate-700 transition-colors"
+            >
+              {isJsonCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
+              <span>{isJsonCopied ? 'Copied Full Telemetry Packet JSON!' : 'Copy Telemetry Packet JSON'}</span>
+            </button>
           </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 px-4 py-2 text-center text-[10px] text-slate-500">
-        National AWS Quality System • Smart India Hackathon (SIH 6073) • Zero-Tracking DPDPA 2023 Compliant
+      <footer className="bg-slate-900 border-t border-slate-800 px-4 py-2 text-center text-[10px] text-slate-400">
+        Project JATAYU • National AWS Quality Management System (SIH26073) • Zero-Tracking DPDPA 2023 Compliant
       </footer>
     </div>
   );

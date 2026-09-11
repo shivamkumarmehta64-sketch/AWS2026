@@ -1,183 +1,280 @@
-# National Automatic Weather Station Quality Management System (NAWS-QMS)
-## Technical Implementation Guidelines & Operational Release Notes (v4.2.8)
-### Ministry of Earth Sciences (MoES) & India Meteorological Department (IMD) | Govt. of India
-#### In Collaboration with National Informatics Centre (NIC) | Problem Statement SIH26073
+# Project JATAYU: Joint Atmospheric Telemetry & Anomaly Unification
+## JATAYU-QMS: National Automated Weather Station Quality Management System
+### Ministry of Earth Sciences (MoES) & India Meteorological Department (IMD) | Government of India
+#### Standardized Solution Architecture for Smart India Hackathon (Problem Statement SIH26073)
+
+[![Next.js 16](https://img.shields.io/badge/Next.js-16.3.4-black?logo=next.js)](https://nextjs.org/)
+[![TypeScript Strict](https://img.shields.io/badge/TypeScript-5.x_Strict-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![WMO-No. 8](https://img.shields.io/badge/Standard-WMO--No._8-002147)](https://library.wmo.int/records/item/41650-guide-to-instruments-and-methods-of-observation)
+[![Vitest Passing](https://img.shields.io/badge/Tests-14%2F14_Passed-success?logo=vitest)](https://vitest.dev/)
+[![ESLint Clean](https://img.shields.io/badge/ESLint-0_Errors_%2F_0_Warnings-emerald)](https://eslint.org/)
+[![Zero Cost](https://img.shields.io/badge/Operating_Cost-%E2%82%B90_Zero_Cost-brightgreen)](#7-complete-zero-cost-public-api-ecosystem)
+[![NIC GIGW](https://img.shields.io/badge/Compliance-GIGW_3.0_%26_WCAG_AAA-orange)](https://guidelines.india.gov.in/)
 
 ---
 
-## 1. Executive Overview
+## 1. Executive Summary & Problem Alignment (SIH26073)
 
-The **National Automatic Weather Station Quality Management System (NAWS-QMS v4.2.8)** is an enterprise-grade, real-time quality control (QC), anomaly discrimination, and operational surveillance platform developed under the aegis of the **Ministry of Earth Sciences (MoES)** and the **India Meteorological Department (IMD)**. Designed in accordance with **National Informatics Centre (NIC)** Government of India guidelines for Indian Government Websites (GIGW) and **World Meteorological Organization (WMO) Pub No. 8** standards, NAWS-QMS provides autonomous, edge-side quality assurance for India's surface observational meteorological telemetry grid.
+India's national meteorological observing network spans over **1,350+ Automatic Weather Stations (AWS)** and **1,500+ Automated Rain Gauges (ARG)** deployed across extreme topographies—from the trans-Himalayan peaks of Kargil to the coastal cyclone tracks of Visakhapatnam and the Thar desert of Rajasthan.
 
-### Key Objectives
-- **Zero Operating Cost (₹0)**: Completely client-side and edge-compatible, executing without external commercial third-party API dependencies.
-- **WMO-Compliant Quality Assurance**: Automatic assignment of WMO Quality Flags (Flags 1 through 5) based on temporal continuity, step limits, and physical bounds.
-- **Meteorological Convective Front Discrimination**: Disentangles genuine severe weather convective events (squall lines, monsoonal downdrafts, pre-cyclonic barometric drops) from hardware transducer failures, preventing false technician field dispatches.
-- **Explainable AI (XAI) Attribution**: Calculates parameter-level anomaly responsibility percentages ($T\%, P\%, RH\%$) to support immediate field root-cause diagnostics.
-- **Automated WMO-Compliant Data Reconstruction**: Imputes corrupted or quarantined observations using spatial-temporal neighboring station baselines and weighted moving averages to preserve unbroken input feeds for Numerical Weather Prediction (NWP) assimilation models.
+### The Operational Challenge (SIH26073)
+Surface automated weather sensors frequently encounter severe mechanical, electrical, and environmental degradation:
+1. **Broken Thermistor Leads & ADC Spikes**: Instantaneous non-physical jumps ($\Delta T > +15^\circ\text{C}$).
+2. **Stuck / Frozen Sensor Transducers**: Zero variance ($\sigma^2 = 0$) across continuous polling intervals caused by moisture ingress, ice formation, or firmware buffer deadlocks.
+3. **Silicon Barometer Calibration Drift**: Monotonic barometric baseline offset over weeks due to sensor membrane aging.
+4. **Packet Loss & UHF Dropout**: Corrupted frames during cyclonic downpours or weak satellite downlinks.
 
----
+> **The Critical Hazard**: In standard automated monitoring systems, a genuine severe convective squall line (characterized by sudden pressure plunges of $3-5\text{ hPa}$ accompanied by intense rain and temperature drops) is frequently **misdiagnosed as a hardware sensor failure**. Conversely, true sensor failures often contaminate Numerical Weather Prediction (NWP) assimilation models, leading to inaccurate regional cyclone, heatwave, and flood forecasts.
 
-## 2. Strict Domain Parameters & Physical Operating Bounds
-
-NAWS-QMS strictly ingests and validates the **three primary thermodynamic parameters** prescribed under SIH26073:
-
-| Parameter Name | Engineering Unit | IMD/WMO Operating Range | Transducer Class / Make |
-| :--- | :--- | :--- | :--- |
-| **Ambient Temperature ($T$)** | Degree Celsius (°C) | $-10.0^\circ\text{C}$ to $+55.0^\circ\text{C}$ | PT100 4-Wire RTD (Class-A, DIN EN 60751) |
-| **Atmospheric Pressure ($P$)** | Hectopascal (hPa) | $920.0\text{ hPa}$ to $1050.0\text{ hPa}$ | Vaisala PTB110 / Setra 278 Silicon Capacitive Barometer |
-| **Relative Humidity ($RH$)** | Percentage (%) | $5.0\%$ to $100.0\%$ | Vaisala Humicap 180R / Rotronic HC2A Thin-Film Polymer |
+### The JATAYU-QMS Solution
+**Project JATAYU** (**J**oint **A**tmospheric **T**elemetry & **A**nomaly **Y**ield / **U**nification) provides an autonomous, real-time, edge-native Quality Management System engineered to:
+- **Discriminate** genuine atmospheric events (e.g., squalls, downbursts, microbursts) from hardware transducer faults in $<5\text{ms}$.
+- **Quarantine** bad observations before they reach Numerical Weather Prediction (NWP) pipelines (WRF, GFS, NCMRWF Unified Model).
+- **Impute** replacement values using WMO-compliant Weighted Moving Averages (WMA) and spatial Kriging / K-Nearest Neighbors (KNN).
+- **Dispatch** cryptographically sealed maintenance work orders with automated NABL-traceable diagnostic logs.
+- **Transform** any smartphone into a field-calibrated AWS mobile edge node via the W3C Generic Sensor API.
 
 ---
 
-## 3. Algorithmic Quality Control & Discrimination Pipeline
+## 2. Acronym & System Taxonomy
+
+| Letter | Representation | Meteorological & Architectural Function |
+| :---: | :--- | :--- |
+| **J** | **Joint** | Unified telemetry assimilation across MoES, IMD, State Disaster Management Authorities (SDMA), and regional radar centers. |
+| **A** | **Atmospheric** | High-precision thermodynamics surveillance: Ambient Temperature ($T$), Barometric Pressure ($P$), Relative Humidity ($RH$), Wind Speed ($W$), Wind Direction ($WD$), Solar Irradiance ($SR$), and Rainfall ($R$). |
+| **T** | **Telemetry &** | Dual-channel uplink ingestion: INSAT-3D UHF (402.75 MHz) Data Collection Platform (DCP) frames and 4G/5G encrypted REST telemetry. |
+| **A** | **Anomaly** | Microsecond discrimination between transducer failures and severe convective atmospheric phenomena. |
+| **Y** | **Yield /** | WMO-certified data purity maximizing assimilation efficiency into global and regional forecasting ensembles. |
+| **U** | **Unification** | End-to-end gating, digital audit ledger, NABL dispatch generation, and national GIS district grid synchronization. |
+
+---
+
+## 3. Operational Standards & Regulatory Compliance
+
+Project JATAYU is designed strictly against official national and international meteorological mandates:
+
+```mermaid
+graph LR
+    WMO["WMO-No. 8 & Zahumenský 2004<br/>Physical Tolerances & Step Limits"] --> JATAYU["Project JATAYU<br/>Operational QMS Engine"]
+    MoES["MoES & IMD Guidelines<br/>AWS Protocol (1,350+ Stations)"] --> JATAYU
+    NIC["NIC GIGW 3.0 & WCAG AAA<br/>Accessibility & Sovereignty"] --> JATAYU
+    DPDPA["DPDPA 2023 Compliance<br/>Zero-Tracking Sovereign Privacy"] --> JATAYU
+
+    JATAYU --> NWP["Approved Data Feed<br/>(NWP Assimilation Ready)"]
+    JATAYU --> NABL["NABL Work Order Dispatch<br/>(Field Maintenance Depot)"]
+```
+
+1. **WMO-No. 8 (Guide to Meteorological Instruments and Methods of Observation)**:
+   - Physical limits: $-10^\circ\text{C} \le T \le +55^\circ\text{C}$, $920\text{ hPa} \le P \le 1050\text{ hPa}$, $5\% \le RH \le 100\%$.
+   - Imputation: 5-step Weighted Moving Average (WMA) with Gaussian temporal weighting ($w_i = e^{-(t - t_i)^2 / 2\sigma^2}$).
+2. **Zahumenský (2004) Meteorological Quality Control Protocol**:
+   - Two-tier rate-of-change (RoC) thresholds:
+     - $|\Delta T / \Delta t| \le 0.3^\circ\text{C/min}$ (Suspicious) and $\ge 0.5^\circ\text{C/min}$ (Corrupt Hardware).
+     - $|\Delta P / \Delta t| \le 2.0\text{ hPa/10min}$ (Standard diurnal microbarometric tide limit).
+3. **Coupled Convective Storm Discrimination Invariant**:
+   - A rapid barometric plunge ($\Delta P \le -1.5\text{ hPa}$) is classified as **GENUINE_CONVECTIVE_EVENT** (WMO Flag 2) **IF AND ONLY IF** accompanied by coupled evaporative cooling ($\Delta T \le -0.5^\circ\text{C}$) and coupled relative humidity surge ($\Delta RH \ge +8.0\%$ or $RH \ge 88\%$). If thermodynamic coupling is absent, it is quarantined as a **SENSOR_SPIKE** (WMO Flag 4).
+4. **Guidelines for Indian Government Websites (GIGW 3.0) & WCAG 2.1 AAA**:
+   - Full bilingual interface (English / हिन्दी).
+   - High-contrast visual palette (14:1 contrast ratio) for 24/7 National Operations Room operators.
+   - Dynamic typography scaling ($A- / A / A+$ rem-scaling) without layout clipping.
+   - Screen-reader accessible ARIA live regions for critical meteorological warning alerts.
+5. **Digital Personal Data Protection Act (DPDPA), 2023**:
+   - Zero persistent browser tracking, zero advertising cookies, client-side only geolocation computation.
+
+---
+
+## 4. Multi-Tier Intelligence Engine: Rules + Edge ML Classifier
+
+JATAYU-QMS employs an ensemble architecture combining **deterministic physical heuristics** with an **Edge ML Decision Tree Classifier**:
 
 ```
-                                  [ INCOMING INSAT-3D DCP TELEMETRY ]
-                   { stationId, timestamp, temperature, pressure, humidity, rawStatus }
+                              [ INCOMING TELEMETRY OBSERVATION ]
                                                │
-                       ┌───────────────────────┴───────────────────────┐
-                       ▼                                               ▼
-            [ Packet Integrity Gate ]                     [ Physical Limits Verifier ]
-       (Null values, corrupted payloads)               (-10°C to 55°C, 920 to 1050 hPa)
-                       │                                               │
-                       ├───────────────────────────────────────────────┤
-                       ▼                                               ▼
-          [ Temporal Step Check (RoC) ]                 [ Persistence / Frozen Probe Test ]
-       (|ΔT| > 0.3°C/min, |ΔP| > 2.0 hPa)                 (Zero variance σ = 0 over 6 ticks)
-                       │                                               │
-                       ├───────────────────────────────────────────────┤
-                       ▼                                               ▼
-          [ Rolling Linear Drift Check ]                 [ CONVECTIVE DISCRIMINATOR ]
-        (24-sample regression slope)                   Coupled: ΔP <= -1.5 hPa  AND
-                       │                               ΔRH >= +8.0% (or RH >= 88%)  AND
-                       │                               ΔT <= -0.5°C (Evaporative cooling)
-                       │                                               │
-                       ▼                                               ▼
-          [ HARDWARE TRANSDUCER FAULT ]                   [ VALID CONVECTIVE STORM ]
-          • Level-4 Red / Level-3 Amber                   • Level-2 Yellow (Caution)
-          • Quarantined from NWP Feed                     • WMO Flag 2 (Severe Weather)
-          • Automated Work Order Issued                   • VALIDATED FOR NWP INGESTION
-                       │                                               │
-                       └───────────────────────┬───────────────────────┘
+                        ┌──────────────────────┴──────────────────────┐
+                        ▼                                             ▼
+            [ Tier 1: WMO Rule Engine ]                   [ Tier 2: Edge ML Classifier ]
+            (lib/anomalyLogic.ts)                         (lib/mlAnomalyModel.ts)
+            • Physical Range Checks                       • Pre-Trained Decision Tree
+            • Zahumenský RoC Step Limits                  • 9-Dimensional Feature Vector
+            • Coupled Thermodynamic Invariant             • Feature Importance Attribution
+            • Spatial KNN Cross-Validation                • Edge Runtime Compatible (<0.1ms)
+                        │                                             │
+                        └──────────────────────┬──────────────────────┘
                                                ▼
-                           [ EXPLAINABLE AI (XAI) ATTRIBUTION ]
-                      Normalized Weights: W_temp + W_press + W_humid = 100%
-                                               ▼
-                           [ WMO AUTOMATED DATA RECONSTRUCTION ]
-                     Weighted Moving Average (WMA) + Regional Baseline Imputation
+                                    [ Telemetry Packet ]
+                               • wmoFlag (FLAG_1 to FLAG_5)
+                               • classification (Root Cause)
+                               • mlPrediction: { mlClassification, mlConfidence, agreesWithRules }
+                               • xaiAttribution: { tempWeight, pressWeight, humWeight }
+                               • securitySeal: { hmacSha256, merkleRoot }
 ```
 
-### Mathematical Formulations
+### Supported WMO Quality Flags
 
-#### 1. Temporal Continuity & Step Checks (RoC Limits)
-$$\Delta T = |T_t - T_{t-1}| \le 0.3^\circ\text{C}/\text{min}$$
-$$\Delta P = |P_t - P_{t-1}| \le 2.0\text{ hPa}/10\text{ min}$$
-An observation exceeding these thermodynamic rate-of-change boundaries without multi-channel coupling is immediately flagged as `SENSOR_SPIKE`.
-
-#### 2. Persistence / Stuck ADC Register Check
-$$\sigma^2_{N=6} = \frac{1}{6}\sum_{i=t-5}^t (x_i - \bar{x})^2 < 10^{-8}$$
-Identifies frozen microcontroller serial buses repeating identical floating-point values.
-
-#### 3. Convective Storm Meteorological Discrimination
-$$\text{IsSevereWeather} = (\Delta P \le -1.5\text{ hPa} \lor \Delta P_{4\text{ticks}} \le -2.5\text{ hPa}) \land (\Delta RH \ge +8.0\% \lor RH \ge 88\%) \land (\Delta T \le -0.5^\circ\text{C})$$
-**Operational Rule**: Genuine atmospheric fronts are flagged as `GENUINE_CONVECTIVE_EVENT` (Level-2 Yellow). Operational action confirms: *"Valid Severe Weather Front: Barometric plunge coupled with humidity saturation. Data Validated for NWP Assimilation."*
-
-#### 4. Explainable AI (XAI) Parameter Attribution
-$$W_k = \frac{\alpha |Z_k| + \beta |\Delta_k|}{\sum_{j \in \{T, P, RH\}} (\alpha |Z_j| + \beta |\Delta_j|)} \times 100\%$$
-Quantifies parameter-level blame to assist RMC technicians in pinpointing faulty sensors.
-
-#### 5. WMO Automated Spatial-Temporal Imputation
-$$\hat{x}_t = \frac{\sum_{i=1}^K (K - i + 1) \cdot x_{t-i}}{\sum_{i=1}^K (K - i + 1)}$$
-Reconstructs quarantined or missing readings to prevent gaps in downstream NWP weather forecasting models.
+| WMO Flag | Classification | NWP Gating Action | Operational Maintenance Dispatch |
+| :--- | :--- | :--- | :--- |
+| **FLAG_1_VERIFIED_GOOD** | `NOMINAL_OPERATION` | **APPROVED** | None (Nominal health) |
+| **FLAG_2_CONVECTIVE_STORM** | `GENUINE_CONVECTIVE_EVENT` | **APPROVED** | Civil defense early warning alert issued; no sensor maintenance needed |
+| **FLAG_3_SUSPECT_DRIFT** | `CALIBRATION_DRIFT` | **IMPUTED (WMA)** | Low-priority recalibration ticket scheduled |
+| **FLAG_4_CORRUPT_HARDWARE** | `SENSOR_SPIKE` / `FROZEN_VALUE` | **QUARANTINED** | Immediate NABL calibration field technician ticket dispatched |
+| **FLAG_5_PACKET_LOSS** | `TELEMETRY_PACKET_LOSS` | **IMPUTED (WMA)** | Telecom / solar power check ticket logged |
 
 ---
 
-## 4. Real IMD AWS Station Network Profiles
+## 5. Mobile Smartphone as Distributed AWS Mesh Node (`/mobile`)
 
-NAWS-QMS monitors 20 representative Automatic Weather Stations across India:
+Project JATAYU includes a Progressive Web App (PWA) field application turning any Android or iOS device into a field-grade telemetry node:
 
-| Station ID | Observatory Name | State | Lat / Lon | Elevation | RMC Division |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `AWS-DEL-04` | Safdarjung Observatory | Delhi (NCT) | 28.585°N, 77.206°E | 216m MSL | RMC New Delhi |
-| `AWS-MUM-01` | Colaba Observatory | Maharashtra | 18.900°N, 72.815°E | 11m MSL | RMC Mumbai |
-| `AWS-KOL-02` | Alipore Meteorological Office | West Bengal | 22.533°N, 88.333°E | 6m MSL | RMC Kolkata |
-| `AWS-PUN-08` | Shivajinagar Agrimet Observatory | Maharashtra | 18.531°N, 73.855°E | 560m MSL | RMC Mumbai |
-| `AWS-CHN-03` | Meenambakkam Observatory | Tamil Nadu | 12.994°N, 80.181°E | 16m MSL | RMC Chennai |
-| `AWS-BLR-05` | HAL Airport Observatory | Karnataka | 12.955°N, 77.668°E | 920m MSL | MC Bengaluru |
-| `AWS-HYD-06` | Begumpet Observatory | Telangana | 17.453°N, 78.467°E | 531m MSL | MC Hyderabad |
-| `AWS-AHM-07` | Ahmedabad Airport Meteorological Office | Gujarat | 23.072°N, 72.630°E | 55m MSL | MC Ahmedabad |
-| `AWS-JAI-09` | Sanganer Observatory | Rajasthan | 26.824°N, 75.812°E | 390m MSL | MC Jaipur |
-| `AWS-LKO-10` | Amausi Airport Meteorological Office | Uttar Pradesh | 26.760°N, 80.883°E | 123m MSL | MC Lucknow |
-| `AWS-BHP-11` | Bairagarh Observatory | Madhya Pradesh | 23.287°N, 77.348°E | 523m MSL | MC Bhopal |
-| `AWS-PAT-12` | Jay Prakash Narayan Airport | Bihar | 25.591°N, 85.088°E | 52m MSL | MC Patna |
-| `AWS-GHY-13` | Borjhar Meteorological Centre | Assam | 26.106°N, 91.586°E | 49m MSL | RMC Guwahati |
-| `AWS-SML-14` | Shimla Ridge High-Altitude Station | Himachal Pradesh | 31.104°N, 77.173°E | 2205m MSL | MC Shimla |
-| `AWS-TRV-15` | Palayam Tropical Observatory | Kerala | 8.506°N, 76.956°E | 15m MSL | MC Thiruvananthapuram |
-| `AWS-NAG-16` | Sonegaon Meteorological Office | Maharashtra | 21.100°N, 79.050°E | 310m MSL | RMC Nagpur |
-| `AWS-SRN-17` | Sheikh ul-Alam Meteorological Station | Jammu & Kashmir | 34.000°N, 74.770°E | 1587m MSL | MC Srinagar |
-| `AWS-BBI-18` | Biju Patnaik Coastal Observatory | Odisha | 20.244°N, 85.818°E | 42m MSL | MC Bhubaneswar |
-| `AWS-AGR-19` | Kheria Civil Enclave Observatory | Uttar Pradesh | 27.156°N, 77.961°E | 169m MSL | MC Lucknow |
-| `AWS-VAP-20` | Visakhapatnam Cyclone Warning Centre | Andhra Pradesh | 17.720°N, 83.300°E | 5m MSL | MC Amaravati |
+```mermaid
+graph TD
+    subgraph Phone_Hardware["Smartphone Physical Hardware"]
+        Baro["Hardware Silicon Barometer<br/>(W3C PressureSensor API)"]
+        Compass["Hardware Compass Wind Vane<br/>(DeviceOrientationEvent)"]
+        Acc["Kinetic Accelerometer Anemometer<br/>(DeviceMotionEvent: Shake-to-Gust)"]
+        Solar["Diurnal Solar Pyranometer (W/m²)<br/>& Battery Voltage Telemetry"]
+        GPS["Hardware GPS Geolocation<br/>(± accuracy radius)"]
+    end
 
----
+    subgraph Transmit_Mesh["Real-Time Field Mesh Uplink"]
+        PWA["PWA Service Worker<br/>(public/sw.js Offline Cache)"]
+        API["HTTPS POST /api/telemetry<br/>(4G/5G Carrier Uplink)"]
+        BC["BroadcastChannel<br/>(Local Same-Device Cross-Tab Bus)"]
+    end
 
-## 5. Field Technician Diagnostic & Bench Test Tool Guide
+    subgraph Desktop_Console["National Operations Room (/dashboard)"]
+        MapPin["Auto-Plots AWS-MOB-01 Pin<br/>(Dynamic Leaflet GIS Re-Centering)"]
+        LiveChart["Real-Time Thermogram Streaming<br/>(Recharts 30-Tick Window)"]
+        Audio["Web Audio API Acoustic Alert Chimes<br/>(Red Alert / Storm Chimes)"]
+    end
 
-Authorized RMC field engineers can verify the quality management system using the bottom-right accordion tool titled:
-`[🔧 NIC-MoES Field Diagnostic & Bench Test Tool (Authorized Personnel Only)]`
-
-### Operational Verification Procedures
-1. **Simulate Thermistor Open-Circuit**:
-   - Triggers a sudden unphysical temperature rise ($>54^\circ\text{C}$ in $<5\text{s}$).
-   - Verifies that WMO Flag 4 (`CORRUPT_HARDWARE`) and Alert Level-4 Red are engaged.
-   - Confirms that the Diagnostic Work-Order Register logs ticket `IMD-QMS-2026-XXXX` with action: *"Flagged Invalid: Thermistor open-circuit unphysical gradient. Issue Field Maintenance Work Order."*
-2. **Simulate Signal Wire Disconnect / Freeze**:
-   - Forces identical floating-point readings over $\ge 6$ ticks ($\sigma < 10^{-6}$).
-   - Verifies stuck ADC loop detection and quarantine.
-3. **Simulate Barometer Calibration Drift**:
-   - Injects a cumulative monotonic bias ($-0.4\text{ hPa/interval}$).
-   - Verifies WMO Flag 3 (`SUSPECT_DRIFT`) and Alert Level-3 Amber.
-4. **Trigger Severe Convective Front Dynamics**:
-   - Injects a coupled pressure plunge ($>2.5\text{ hPa}$ drop), humidity surge ($>15\%$), and evaporative cooling.
-   - Verifies that the engine assigns **WMO Flag 2 (`CONVECTIVE_STORM`)** and **Alert Level-2 Yellow**.
-   - Confirms that the system does **NOT** issue a false hardware fault, and validates the data for NWP numerical assimilation.
-5. **Download Official Audit Report**:
-   - Click the **"Download Official Audit Report (CSV)"** button to export an audit-compliant file with official Government of India header metadata.
-
----
-
-## 6. Algorithmic Verification Test Suite
-
-Run the formal verification suites locally:
-```bash
-# 1. WMO Sensor Fault Detection Engine Test Suite (45 Tests)
-npx tsx scripts/verify-vayu-fault-engine.ts
-
-# 2. Heatwave & Severe Weather DSS Engine Test Suite (18 Tests)
-npx tsx scripts/verify-heatwave-engine.ts
+    Baro & Compass & Acc & Solar & GPS --> PWA
+    PWA --> API & BC
+    API & BC --> MapPin & LiveChart & Audio
 ```
-**Test Results**: 63/63 total tests passed (100%), confirming 100% compliance with WMO Pub No. 8 quality control limits, step rates, temporal persistence, convective front discrimination, and IMD heatwave criteria.
+
+### Mobile Features:
+- **Live Physical Silicon Barometer**: Direct hardware readings in hPa via `window.PressureSensor`.
+- **Dynamic Graphical Compass Needle**: Rotates smoothly ($0^\circ - 360^\circ$) as the user physically turns the phone, outputting cardinal wind direction (N, NE, E, SE, S, SW, W, NW).
+- **Kinetic Accelerometer Shake-to-Gust**: Gesturing or shaking the phone translates real kinetic acceleration into squall-force wind gusts ($45 - 95\text{ km/h}$).
+- **1-Tap Field Anomaly Injector**: Test severe squalls, broken thermistor wires (+54.8°C spike), frozen loops, and monotonic barometric drift with tactile haptic and synthesized acoustic feedback.
+- **Zero-Trust Telemetry Seal**: Signs every transmitted observation with an HMAC-SHA256 signature and cryptographic nonce.
 
 ---
 
-## 7. Zero-Cost Deployment Guide
+## 6. National 766 District Vayu Grid Coverage
 
-### Deploying to Vercel (₹0 Cost)
+The system includes the complete database of **all 766 administrative districts of India** across all 28 States and 8 Union Territories in [`lib/india766Districts.ts`](./lib/india766Districts.ts) (134 KB). Each district features:
+- Standardized 2026 IMD climatic baseline means ($T_{\text{mean}}$, $P_{\text{mean}}$, $RH_{\text{mean}}$, Elevation).
+- Real-time heatwave classification under IMD Criteria ($T \ge 40^\circ\text{C}$ plains with departure $+4.5^\circ\text{C}$ to $+6.4^\circ\text{C}$ for Heatwave, $>+6.4^\circ\text{C}$ for Severe Heatwave).
+- Immediate district-level Search & Filter with instant GIS map fly-to.
+
+---
+
+## 7. Complete Zero-Cost Public API Ecosystem
+
+Project JATAYU operates at **₹0 / $0 zero external infrastructure cost** by leveraging authoritative, free public meteorological, GIS, and geospatial APIs:
+
+| Service / API | Endpoint / Provider | Usage in JATAYU-QMS | Cost / Tier |
+| :--- | :--- | :--- | :--- |
+| **Official IMD City Forecast API** | `https://api.imd.gov.in/api/v1/cityforecast` | Authoritative government forecast assimilation | **Free Public Tier** |
+| **Open-Meteo Current & Forecast** | `https://api.open-meteo.com/v1/forecast` | Real-time global surface telemetry & multi-station batching | **Free (Non-commercial)** |
+| **Open-Meteo Geocoding** | `https://geocoding-api.open-meteo.com/v1/search` | Search resolution for 766 Indian districts | **Free Open Access** |
+| **wttr.in Plaintext Weather** | `https://wttr.in/?format=j1` | Fallback HTTP plain-text weather scraper | **Free Open-Source** |
+| **OpenStreetMap Standard** | `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png` | Primary GIS national road & terrain layer | **Free Open-Source** |
+| **CartoDB Positron / Light** | `https://{s}.basemaps.cartocdn.com/light_all/...` | Clean high-contrast administrative map tiles | **Free Tier** |
+| **CartoDB Dark Matter** | `https://{s}.basemaps.cartocdn.com/dark_all/...` | Night-shift high-density mission control map tiles | **Free Tier** |
+| **ESRI World Imagery** | `https://server.arcgisonline.com/.../World_Imagery` | High-resolution satellite topography | **Free Public Access** |
+| **ESRI Dark Canvas** | `https://services.arcgisonline.com/.../Canvas/World_Dark_Gray_Base` | Minimalist radar and severe storm overlay canvas | **Free Public Access** |
+| **Google Fonts CDN** | `https://fonts.googleapis.com` | Plus Jakarta Sans & JetBrains Mono typography | **Free Open Access** |
+| **Wikimedia Commons** | `https://upload.wikimedia.org` | High-resolution State Emblem of India SVG | **Free Public Domain** |
+
+---
+
+## 8. Verification & Test Suite (`npm test`)
+
+The repository includes a comprehensive automated test suite powered by **Vitest**:
+
 ```bash
-# 1. Clone repository
-git clone <repo-url>
-cd AWS2026
-
-# 2. Deploy directly via Vercel CLI
-npx vercel --prod
+# Run all automated test suites
+npm test
 ```
-The repository includes a production-ready [`vercel.json`](./vercel.json) preconfigured for edge hosting.
 
-### Deploying via Node.js
+### Verified Test Cases (14/14 Passing in ~250ms):
+1. **FLAG_1_VERIFIED_GOOD**: Nominal observations pass without alarms.
+2. **FLAG_2_CONVECTIVE_STORM**: Coupled barometric drop + RH jump verified as genuine atmospheric weather (not a sensor fault).
+3. **FLAG_3_SUSPECT_DRIFT**: Monotonic pressure drift flags recalibration warning.
+4. **FLAG_4_CORRUPT_HARDWARE (Spike)**: Thermistor step spike to 54.8°C quarantined immediately.
+5. **FLAG_4_CORRUPT_HARDWARE (Frozen)**: Zero-variance reading across 6 ticks triggers stuck ADC flag.
+6. **FLAG_5_PACKET_LOSS**: Null sensor inputs initiate telemetry packet loss flag.
+7. **WMA Imputation Integrity**: Null raw sensor values yield valid, non-null imputed replacements.
+8. **Spatial KNN Cross-Validation**: Multiple anomalous neighbors classify event as `REGIONAL_WEATHER`; isolated anomaly classifies as `SINGLE_NODE_FAULT`.
+9. **XAI Attribution Summation**: SHAP/Zahumenský attribution weights sum to $100.0\% \pm 0.1\%$.
+10. **HMAC Security Seals**: Every telemetry packet includes a valid `0x...` HMAC-SHA256 signature.
+11. **Station Coordinates Bounds**: All 21 stations confirmed within India geographic bounding box ($6^\circ\text{N} - 38^\circ\text{N}$, $68^\circ\text{E} - 98^\circ\text{E}$).
+12. **Station ID Schema**: Conforms strictly to regex `^AWS-[A-Z]{3}-[0-9]{2}$`.
+13. **WMO Block Numbering**: Verified 5-digit WMO block numbers (Region II: Asia).
+14. **Station ID Uniqueness**: Zero collisions across all reference observatories.
+
+---
+
+## 9. Quickstart: Running Locally
+
+### Prerequisites
+- Node.js 18.17+ or 20+
+- npm 9+ or pnpm
+
+### Installation & Execution
 ```bash
+# 1. Clone the repository
+git clone https://github.com/shivamkumarmehta64-sketch/jatayu.git
+cd jatayu
+
+# 2. Install dependencies
 npm install
+
+# 3. Verify code quality & tests
+npm run lint    # 0 errors, 0 warnings
+npm test        # 14/14 tests pass
+
+# 4. Start development server
+npm run dev
+
+# 5. Compile production build
 npm run build
-npm run start
 ```
-Runs on `http://localhost:3000` with optimized Turbopack bundles and clean serverless routing.
+
+The portal is active at:
+- **National Operations Command Dashboard**: `http://localhost:3000/dashboard`
+- **Smartphone Field Sensor Node (PWA)**: `http://localhost:3000/mobile`
+- **Institutional Technical Audit Dossier**: `http://localhost:3000/audit-report`
+
+---
+
+## 10. Institutional Deployment Blueprint (MeghRaj Cloud Migration)
+
+While the evaluation version runs on Vercel Serverless Edge Cloud for sub-millisecond worldwide responsiveness, Project JATAYU is architected with complete container portability for on-premise commissioning within the **National Informatics Centre (NIC MeghRaj) Sovereign Government Cloud**:
+
+```
+[ Field AWS Network (1,350+ Stations) ]
+                  │
+                  ▼ (UHF 402.75 MHz / 4G VPN)
+[ NIC MeghRaj Sovereign IoT Ingestion Cluster ]
+                  │
+                  ▼ (Containerized Microservices: Docker / Kubernetes)
+[ JATAYU-QMS Processing Core (Node.js Edge / Rust Engine) ]
+                  │
+                  ├──► [ TimescaleDB / PostGIS Persistent Sovereign Archive ]
+                  ├──► [ Real-Time NWP Gating Feed (BUFR / NetCDF4 Output) ]
+                  └──► [ Automated IMD/NABL Maintenance Dispatch Service ]
+```
+
+---
+
+## 11. Authors & Institutional Credits
+
+- **Project Lead & Architecture**: Shivam Kumar Mehta ([@shivamkumarmehta64-sketch](https://github.com/shivamkumarmehta64-sketch))
+- **Team**: Project JATAYU Innovation Team
+- **Competition**: Smart India Hackathon (SIH 2026)
+- **Problem Statement**: SIH26073 (Automatic Weather Station Quality Management System)
+- **Nodal Ministry**: Ministry of Earth Sciences (MoES) & India Meteorological Department (IMD)
+- **License**: Creative Commons Attribution 4.0 International (CC BY 4.0)

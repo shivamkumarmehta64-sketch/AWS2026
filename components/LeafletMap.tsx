@@ -10,11 +10,10 @@ export type BasemapStyle = 'DARK' | 'SATELLITE' | 'OSM' | 'POSITRON';
 
 export const BASEMAP_TILES: Record<BasemapStyle, { name: string; url: string; attribution: string; maxZoom: number; subdomains?: string }> = {
   DARK: {
-    name: 'Dark Cyber GIS',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
-    maxZoom: 19,
-    subdomains: 'abcd'
+    name: 'Dark Command Canvas',
+    url: 'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom',
+    maxZoom: 16,
   },
   SATELLITE: {
     name: 'ESRI Satellite',
@@ -30,10 +29,9 @@ export const BASEMAP_TILES: Record<BasemapStyle, { name: string; url: string; at
   },
   POSITRON: {
     name: 'Positron Gray',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
-    maxZoom: 19,
-    subdomains: 'abcd'
+    url: 'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    maxZoom: 16,
   }
 };
 

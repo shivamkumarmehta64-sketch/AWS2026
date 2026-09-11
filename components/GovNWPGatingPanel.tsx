@@ -63,7 +63,7 @@ export const GovNWPGatingPanel = React.memo<Props>(function GovNWPGatingPanel({ 
   const exportNWPFeed = () => {
     const feed = {
       generatedAt: new Date().toISOString(),
-      system: 'NAWS-QMS v4.2.8 | SIH26073',
+      system: 'Project JATAYU (JATAYU-QMS v4.2.8) | SIH26073',
       wmoPubNo8Compliance: true,
       nwpAssimilationFeed: decisions
         .filter(d => d.nwpStatus !== 'QUARANTINED')
