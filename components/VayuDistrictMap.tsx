@@ -14,6 +14,7 @@ import {
   Layers,
   X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
 const DynamicVayuLeafletMap = dynamic(() => import('./VayuLeafletMap'), {
@@ -105,15 +106,23 @@ export const VayuDistrictMap: React.FC<Props> = ({
   }, [allDistrictEntries, selectedState, searchQuery]);
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col backdrop-blur-xl">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col backdrop-blur-xl"
+    >
       {/* Top Map Header */}
       <div className="bg-slate-950/95 border-b border-slate-800 p-3.5 space-y-3">
         {/* Title & Quick Search */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-gradient-to-br from-indigo-500 to-sky-600 text-white rounded-lg shadow-md shadow-indigo-500/20">
+            <motion.div 
+              whileHover={{ rotate: 15, scale: 1.1 }}
+              className="p-2 bg-gradient-to-br from-indigo-500 to-sky-600 text-white rounded-lg shadow-md shadow-indigo-500/20"
+            >
               <MapPin className="w-4 h-4" />
-            </div>
+            </motion.div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-white">
@@ -190,7 +199,7 @@ export const VayuDistrictMap: React.FC<Props> = ({
             <button
               onClick={() => setActiveMapLayer('QC')}
               className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all ${
-                activeMapLayer === 'QC' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                activeMapLayer === 'QC' ? 'bg-emerald-600 text-white shadow-xs scale-105' : 'text-slate-400 hover:text-white'
               }`}
             >
               <ShieldCheck className="w-3 h-3 text-emerald-300" />
@@ -199,7 +208,7 @@ export const VayuDistrictMap: React.FC<Props> = ({
             <button
               onClick={() => setActiveMapLayer('HEATWAVE')}
               className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all ${
-                activeMapLayer === 'HEATWAVE' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                activeMapLayer === 'HEATWAVE' ? 'bg-amber-600 text-white shadow-xs scale-105' : 'text-slate-400 hover:text-white'
               }`}
             >
               <Flame className="w-3 h-3 text-amber-300" />
@@ -307,6 +316,6 @@ export const VayuDistrictMap: React.FC<Props> = ({
           />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

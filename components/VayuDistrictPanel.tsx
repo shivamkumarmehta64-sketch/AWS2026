@@ -20,6 +20,7 @@ import {
   Activity,
   Flame
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { evaluateIMDHeatwave } from '@/lib/heatwaveEngine';
 
 
@@ -29,6 +30,30 @@ interface Props {
   onSelectDistrictForCompare?: (districtId: string) => void;
   language?: 'en' | 'hi';
 }
+
+const SparklineGraph = React.memo(({ values, strokeColor = '#3b82f6' }: { values: (number | null | undefined)[], strokeColor?: string }) => {
+  const valid = values.filter((v): v is number => typeof v === 'number');
+  if (valid.length < 2) return <div className="h-6 text-[9px] text-slate-400 flex items-center">N/A</div>;
+
+  const min = Math.min(...valid);
+  const max = Math.max(...valid);
+  const range = max - min || 1;
+  const width = 80;
+  const height = 24;
+
+  const points = valid.map((v, i) => {
+    const x = (i / (valid.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 4) - 2;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  return (
+    <svg width={width} height={height} className="overflow-visible">
+      <polyline fill="none" stroke={strokeColor} strokeWidth="1.8" points={points} strokeLinecap="round" />
+    </svg>
+  );
+});
+SparklineGraph.displayName = 'SparklineGraph';
 
 export const VayuDistrictPanel: React.FC<Props> = ({
   districtId,
@@ -86,29 +111,7 @@ export const VayuDistrictPanel: React.FC<Props> = ({
 
   if (!district) return null;
 
-  // Mini sparkline SVG generator
-  const renderSparkline = (values: (number | null | undefined)[], strokeColor = '#3b82f6') => {
-    const valid = values.filter((v): v is number => typeof v === 'number');
-    if (valid.length < 2) return <div className="h-6 text-[9px] text-slate-400 flex items-center">N/A</div>;
-
-    const min = Math.min(...valid);
-    const max = Math.max(...valid);
-    const range = max - min || 1;
-    const width = 80;
-    const height = 24;
-
-    const points = valid.map((v, i) => {
-      const x = (i / (valid.length - 1)) * width;
-      const y = height - ((v - min) / range) * (height - 4) - 2;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-
-    return (
-      <svg width={width} height={height} className="overflow-visible">
-        <polyline fill="none" stroke={strokeColor} strokeWidth="1.8" points={points} strokeLinecap="round" />
-      </svg>
-    );
-  };
+  // Sparkline generator extracted to SparklineGraph component for optimization
 
   const handleExportCSV = () => {
     const csv = exportEventLogToCSV(districtId);
@@ -122,8 +125,38 @@ export const VayuDistrictPanel: React.FC<Props> = ({
     document.body.removeChild(link);
   };
 
+  const panelVariants = {
+    hidden: { opacity: 0, y: 30, scale: 0.98 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1,
+      transition: { type: 'spring' as const, damping: 25, stiffness: 200 }
+    },
+    exit: { opacity: 0, y: 20, scale: 0.98 }
+  };
+
+  const gridVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300 } }
+  };
+
   return (
-    <div className="bg-slate-900/95 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col my-4 text-white backdrop-blur-2xl">
+    <motion.div 
+      variants={panelVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      className="bg-slate-900/95 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col my-4 text-white backdrop-blur-2xl"
+    >
       {/* 1. HEADER */}
       <div className="bg-gradient-to-r from-[#002147] via-[#0B3B60] to-[#002147] text-white p-4">
         <div className="flex items-start justify-between flex-wrap gap-3">
@@ -211,8 +244,14 @@ export const VayuDistrictPanel: React.FC<Props> = ({
       </div>
 
       {/* Side-by-side Nearby District Comparison Drawer */}
-      {isCompareOpen && (
-        <div className="bg-sky-50 p-3.5 border-b border-sky-200">
+      <AnimatePresence>
+        {isCompareOpen && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-sky-50 p-3.5 border-b border-sky-200 overflow-hidden"
+          >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#002147]">
               <GitCompare className="w-4 h-4 text-[#FF9933]" />
@@ -253,11 +292,12 @@ export const VayuDistrictPanel: React.FC<Props> = ({
               </div>
             ))}
           </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content Sections */}
-      <div className="p-4 space-y-5">
+      <div className="p-4 space-y-4">
         {/* 2. LIVE READINGS GRID (12 Parameter Cards) */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -267,7 +307,12 @@ export const VayuDistrictPanel: React.FC<Props> = ({
             <span className="text-[10px] font-mono text-slate-400">WMO Resolution & Sparklines</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <motion.div 
+            variants={gridVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+          >
             {[
               {
                 title: 'Temperature',
@@ -275,7 +320,7 @@ export const VayuDistrictPanel: React.FC<Props> = ({
                 unit: '°C',
                 icon: Thermometer,
                 spark: history.map(h => h.temperature),
-                color: '#ef4444'
+                color: '#f43f5e'
               },
               {
                 title: 'Feels Like',
@@ -291,7 +336,7 @@ export const VayuDistrictPanel: React.FC<Props> = ({
                 unit: '%',
                 icon: Droplets,
                 spark: history.map(h => h.humidity),
-                color: '#06b6d4'
+                color: '#0ea5e9'
               },
               {
                 title: 'Dew Point',
@@ -299,7 +344,7 @@ export const VayuDistrictPanel: React.FC<Props> = ({
                 unit: '°C',
                 icon: Droplets,
                 spark: history.map(h => h.dew_point),
-                color: '#0284c7'
+                color: '#38bdf8'
               },
               {
                 title: 'Pressure (MSL)',
@@ -339,7 +384,7 @@ export const VayuDistrictPanel: React.FC<Props> = ({
                 unit: 'km/h',
                 icon: Wind,
                 spark: history.map(h => h.wind_speed),
-                color: '#f59e0b'
+                color: '#eab308'
               },
               {
                 title: 'Precipitation',
@@ -347,7 +392,7 @@ export const VayuDistrictPanel: React.FC<Props> = ({
                 unit: 'mm/hr',
                 icon: CloudRain,
                 spark: history.map(h => h.precipitation),
-                color: '#2563eb'
+                color: '#3b82f6'
               },
               {
                 title: 'Cloud Cover',
@@ -368,7 +413,13 @@ export const VayuDistrictPanel: React.FC<Props> = ({
             ].map(card => {
               const Icon = card.icon;
               return (
-                <div key={card.title} className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-col justify-between">
+                <motion.div 
+                  variants={cardVariants}
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  key={card.title} 
+                  className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow cursor-default"
+                >
                   <div className="flex items-center justify-between text-slate-500 mb-1">
                     <span className="text-[11px] font-bold text-slate-700">{card.title}</span>
                     <Icon className="w-3.5 h-3.5 text-slate-400" />
@@ -377,17 +428,22 @@ export const VayuDistrictPanel: React.FC<Props> = ({
                     <div className="text-xl font-extrabold font-mono text-[#002147]">
                       {card.val} <span className="text-xs font-normal text-slate-500">{card.unit}</span>
                     </div>
-                    <div>{renderSparkline(card.spark, card.color)}</div>
+                    <div><SparklineGraph values={card.spark} strokeColor={card.color} /></div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </div>
 
         {/* 3. ACTIVE FAULTS LIST */}
         {qcReport && qcReport.faults.length > 0 && (
-          <div className="bg-red-50/70 border-2 border-red-300 rounded-lg p-4 space-y-3">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', damping: 20 }}
+            className="bg-red-50/70 border-2 border-red-300 rounded-lg p-4 space-y-3 shadow-md"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="w-5 h-5 text-red-600" />
@@ -434,11 +490,16 @@ export const VayuDistrictPanel: React.FC<Props> = ({
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* 4. TIMELINE CHART (Multi-Line Temp, Humidity, Pressure over 24 Hours) */}
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2 shadow-sm"
+        >
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h4 className="text-xs font-bold uppercase text-[#002147] tracking-wider">
@@ -521,10 +582,15 @@ export const VayuDistrictPanel: React.FC<Props> = ({
               )}
             </svg>
           </div>
-        </div>
+        </motion.div>
 
         {/* 5. STATION HEALTH LOG (Chronological Events with CSV Export) */}
-        <div className="bg-white border border-slate-200 rounded-lg p-4 space-y-2">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white border border-slate-200 rounded-lg p-4 space-y-2 shadow-sm"
+        >
           <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-[#002147]" />
@@ -583,8 +649,8 @@ export const VayuDistrictPanel: React.FC<Props> = ({
               ))
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };

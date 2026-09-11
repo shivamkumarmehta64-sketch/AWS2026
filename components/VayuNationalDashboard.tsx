@@ -12,6 +12,7 @@ import {
   Layers,
   ChevronRight
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
   onSelectDistrict: (districtId: string) => void;
@@ -129,69 +130,102 @@ export const VayuNationalDashboard: React.FC<Props> = ({
       .sort((a, b) => b.faults - a.faults || a.name.localeCompare(b.name));
   }, [allDistricts]);
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { 
+      opacity: 1, 
+      y: 0,
+      transition: { type: 'spring' as const, stiffness: 300, damping: 24 }
+    }
+  };
+
+
   return (
-    <div className="space-y-4">
+    <motion.div 
+      className="space-y-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
       {/* 1. TOP STATS ROW */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
-        <div className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-sky-500/40 transition-all">
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3"
+      >
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-sky-500/40 transition-all">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
             <span>Districts Monitored</span>
             <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
           </div>
           <div className="text-2xl font-extrabold text-white font-mono mt-1">{stats.total}</div>
           <div className="text-[10px] text-slate-400 mt-0.5 font-medium">All 28 States &amp; 8 UTs</div>
-        </div>
+        </motion.div>
 
-        <div className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-emerald-500/40 transition-all">
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-emerald-500/40 transition-all">
           <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
             <span>Live &amp; Healthy</span>
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
           </div>
           <div className="text-2xl font-extrabold text-emerald-400 font-mono mt-1">{stats.healthy}</div>
           <div className="text-[10px] text-emerald-400/80 mt-0.5 font-medium">WMO Flag 1 Verified</div>
-        </div>
+        </motion.div>
 
-        <div className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-amber-500/40 transition-all">
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-amber-500/40 transition-all">
           <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between">
             <span>Active Faults</span>
             <span className="w-2 h-2 rounded-full bg-amber-400" />
           </div>
           <div className="text-2xl font-extrabold text-amber-400 font-mono mt-1">{stats.activeFaults}</div>
           <div className="text-[10px] text-amber-400/80 mt-0.5 font-medium">Under Diagnostic Isolation</div>
-        </div>
+        </motion.div>
 
-        <div className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-red-500/40 transition-all">
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-red-500/40 transition-all">
           <div className="text-[11px] font-bold text-red-400 uppercase tracking-wider flex items-center justify-between">
             <span>Critical Alerts</span>
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           </div>
           <div className="text-2xl font-extrabold text-red-400 font-mono mt-1">{stats.critical}</div>
           <div className="text-[10px] text-red-400/80 mt-0.5 font-medium">Immediate Work Order</div>
-        </div>
+        </motion.div>
 
-        <div className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-slate-700 transition-all">
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-slate-700 transition-all">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
             <span>Offline Stations</span>
             <span className="w-2 h-2 rounded-full bg-slate-500" />
           </div>
           <div className="text-2xl font-extrabold text-slate-300 font-mono mt-1">{stats.offline}</div>
           <div className="text-[10px] text-slate-500 mt-0.5 font-medium">Comms link loss (&gt;15m)</div>
-        </div>
+        </motion.div>
 
-        <div className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-blue-500/40 transition-all">
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} className="bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-xl border border-slate-800 shadow-lg hover:border-blue-500/40 transition-all">
           <div className="text-[11px] font-bold text-sky-400 uppercase tracking-wider flex items-center justify-between">
             <span>Data Coverage %</span>
             <span className="w-2 h-2 rounded-full bg-sky-400" />
           </div>
           <div className="text-2xl font-extrabold text-sky-300 font-mono mt-1">{stats.coverage}%</div>
           <div className="text-[10px] text-sky-400/80 mt-0.5 font-medium">Open-Meteo Pipeline</div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* 2 & 3: Two-Column Row: Leaderboard Left, Category Breakdown Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left: Fault Leaderboard (7 cols) */}
-        <div className="lg:col-span-7 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+          className="lg:col-span-7 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl"
+        >
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-red-400" />
@@ -221,10 +255,13 @@ export const VayuNationalDashboard: React.FC<Props> = ({
                     </td>
                   </tr>
                 ) : (
-                  leaderboard.map(item => {
+                  leaderboard.map((item, idx) => {
                     const worst = item.qcReport?.faults[0];
                     return (
-                      <tr
+                      <motion.tr
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 + idx * 0.05 }}
                         key={item.district.id}
                         onClick={() => onSelectDistrict(item.district.id)}
                         className="hover:bg-slate-800/60 cursor-pointer transition-colors"
@@ -242,21 +279,26 @@ export const VayuNationalDashboard: React.FC<Props> = ({
                           {worst?.code || 'NOMINAL'}
                         </td>
                         <td className="py-2.5 px-3 text-right font-sans">
-                          <button className="text-sky-400 hover:text-sky-300 font-bold text-[11px] flex items-center justify-end gap-0.5 ml-auto">
-                            Inspect <ChevronRight className="w-3 h-3" />
+                          <button className="text-sky-400 hover:text-sky-300 font-bold text-[11px] flex items-center justify-end gap-0.5 ml-auto group">
+                            Inspect <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                           </button>
                         </td>
-                      </tr>
+                      </motion.tr>
                     );
                   })
                 )}
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
 
         {/* Right: Fault Category Breakdown (5 cols) */}
-        <div className="lg:col-span-5 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className="lg:col-span-5 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl"
+        >
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-sky-400" />
@@ -297,20 +339,27 @@ export const VayuNationalDashboard: React.FC<Props> = ({
                     </span>
                   </div>
                   <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-sky-500 to-blue-600 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%` }}
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 1, delay: 0.2 }}
+                      className="bg-gradient-to-r from-sky-500 to-blue-600 h-1.5 rounded-full"
                     />
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* 4. REAL-TIME EVENT STREAM (Live Tick Log) */}
-      <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-emerald-400 animate-pulse" />
@@ -328,32 +377,48 @@ export const VayuNationalDashboard: React.FC<Props> = ({
         </div>
 
         <div className="space-y-1.5 max-h-48 overflow-y-auto font-mono text-xs pr-1">
-          {events.length === 0 ? (
-            <div className="py-4 text-center text-slate-500 font-sans">
-              Listening for automated ingest telemetry packets...
-            </div>
-          ) : (
-            events.slice(0, 8).map(evt => (
-              <div
-                key={evt.id}
-                onClick={() => onSelectDistrict(evt.districtId)}
-                className="p-2 rounded bg-slate-950/70 border border-slate-800/80 hover:border-sky-500/50 cursor-pointer flex items-center justify-between text-[11px] transition-colors"
+          <AnimatePresence>
+            {events.length === 0 ? (
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }}
+                className="py-4 text-center text-slate-500 font-sans"
               >
-                <div className="flex items-center gap-2 truncate">
-                  <span className="text-slate-400">{evt.timestamp}</span>
-                  <span className="font-bold text-white font-sans">{evt.districtName}</span>
-                  <span className="text-amber-400 font-bold">{evt.faultCode}</span>
-                  <span className="text-slate-400 truncate hidden sm:inline">{evt.message}</span>
-                </div>
-                <span className="text-[10px] text-sky-400 font-sans ml-2 shrink-0">Inspect →</span>
-              </div>
-            ))
-          )}
+                Listening for automated ingest telemetry packets...
+              </motion.div>
+            ) : (
+              events.slice(0, 8).map(evt => (
+                <motion.div
+                  key={evt.id}
+                  initial={{ opacity: 0, x: -10, height: 0 }}
+                  animate={{ opacity: 1, x: 0, height: 'auto' }}
+                  exit={{ opacity: 0, x: 10, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => onSelectDistrict(evt.districtId)}
+                  className="p-2 rounded bg-slate-950/70 border border-slate-800/80 hover:border-sky-500/50 cursor-pointer flex items-center justify-between text-[11px] transition-colors"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="text-slate-400">{evt.timestamp}</span>
+                    <span className="font-bold text-white font-sans">{evt.districtName}</span>
+                    <span className="text-amber-400 font-bold">{evt.faultCode}</span>
+                    <span className="text-slate-400 truncate hidden sm:inline">{evt.message}</span>
+                  </div>
+                  <span className="text-[10px] text-sky-400 font-sans ml-2 shrink-0 group hover:translate-x-1 transition-transform">Inspect →</span>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
 
       {/* 5. INDIA STATE HEALTH GRID (36 States & UTs) */}
-      <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-xl p-4 shadow-xl"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-indigo-400" />
@@ -364,17 +429,26 @@ export const VayuNationalDashboard: React.FC<Props> = ({
           <span className="text-xs text-slate-400 font-mono">Worst District Severity</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true }}
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2"
+        >
           {stateHealthGrid.map(st => {
             const isCrit = st.worstHealth === 'CRITICAL';
             const isDeg = st.worstHealth === 'DEGRADED';
             const isOff = st.worstHealth === 'OFFLINE';
 
             return (
-              <button
+              <motion.button
+                variants={itemVariants}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 key={st.name}
                 onClick={() => onSelectState?.(st.name)}
-                className={`p-2.5 rounded-lg border text-left transition-all ${
+                className={`p-2.5 rounded-lg border text-left transition-colors ${
                   isCrit
                     ? 'bg-red-950/40 border-red-800/80 hover:border-red-500'
                     : isDeg
@@ -398,11 +472,11 @@ export const VayuNationalDashboard: React.FC<Props> = ({
                     {st.faults > 0 ? `${st.faults} Faults` : 'Nominal'}
                   </span>
                 </div>
-              </button>
+              </motion.button>
             );
           })}
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 };

@@ -12,6 +12,7 @@ import {
   HeartPulse,
   Info
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
   selectedDistrictId: string | null;
@@ -75,7 +76,12 @@ export const GovHeatwaveDSSPanel: React.FC<Props> = ({
   }, [heatwaveReports]);
 
   return (
-    <div className="bg-slate-900/95 border border-slate-800 rounded-xl shadow-2xl overflow-hidden space-y-0 text-white backdrop-blur-2xl">
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="bg-slate-900/95 border border-slate-800 rounded-xl shadow-2xl overflow-hidden space-y-0 text-white backdrop-blur-2xl"
+    >
       {/* Header with IMD Source Link */}
       <div className="bg-gradient-to-r from-[#7c2d12] via-[#ea580c] to-[#c2410c] text-white p-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -166,8 +172,16 @@ export const GovHeatwaveDSSPanel: React.FC<Props> = ({
       {/* Main Content Grid */}
       <div className="p-4 space-y-4">
         {/* Active District Heatwave & Departure Deep-Dive */}
+        <AnimatePresence mode="wait">
         {activeReport && (
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+          <motion.div 
+            key={activeReport.districtId}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3"
+          >
             <div className="flex items-start justify-between flex-wrap gap-2 pb-2 border-b border-slate-200">
               <div>
                 <div className="flex items-center gap-2">
@@ -310,8 +324,9 @@ export const GovHeatwaveDSSPanel: React.FC<Props> = ({
                 ))}
               </ul>
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Highest Heat Departures across India (Top 6 Leaderboard) */}
         <div>
@@ -322,12 +337,26 @@ export const GovHeatwaveDSSPanel: React.FC<Props> = ({
             <span className="text-[10px] text-slate-400 font-mono">Real-Time Open-Meteo Ingest</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+            }}
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"
+          >
             {topHeatDistricts.map(d => (
-              <button
+              <motion.button
+                variants={{
+                  hidden: { opacity: 0, y: 15 },
+                  visible: { opacity: 1, y: 0 }
+                }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
                 key={d.districtId}
                 onClick={() => onSelectDistrict(d.districtId)}
-                className="bg-white p-2.5 rounded border border-slate-200 hover:border-[#ea580c] text-left transition-all shadow-2xs hover:shadow-xs"
+                className="bg-white p-2.5 rounded border border-slate-200 hover:border-[#ea580c] text-left transition-colors shadow-2xs hover:shadow-xs"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-[#002147] truncate">{d.districtName}</span>
@@ -343,9 +372,9 @@ export const GovHeatwaveDSSPanel: React.FC<Props> = ({
                     +{d.departure}°C
                   </span>
                 </div>
-              </button>
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
         </div>
 
         {/* Official IMD Criteria Reference Note */}
@@ -356,6 +385,6 @@ export const GovHeatwaveDSSPanel: React.FC<Props> = ({
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

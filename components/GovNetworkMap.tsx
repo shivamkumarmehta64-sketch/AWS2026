@@ -19,6 +19,7 @@ import {
   Maximize2,
   X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
 const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -292,7 +293,12 @@ export const GovNetworkMap = React.memo<Props>(function GovNetworkMap({
   const mobileCount = useMemo(() => mapNodes.filter(n => n.isMobile).length, [mapNodes]);
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col backdrop-blur-xl">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col backdrop-blur-xl"
+    >
       {/* Top Header Bar */}
       <div className="bg-slate-950/95 border-b border-slate-800 p-3 sm:p-4 space-y-3">
         {/* Main Title Row */}
@@ -547,6 +553,6 @@ export const GovNetworkMap = React.memo<Props>(function GovNetworkMap({
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 });

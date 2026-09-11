@@ -115,7 +115,7 @@ export const GovLiveIndiaAutoTester = React.memo<Props>(function GovLiveIndiaAut
         // Fallback to current selected city
         runAutoTestForCoords(selectedLocation.lat, selectedLocation.lon, selectedLocation.city);
       },
-      { timeout: 8000 }
+      { timeout: 20000, maximumAge: 60000 }
     );
   };
 

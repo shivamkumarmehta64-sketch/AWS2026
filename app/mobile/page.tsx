@@ -134,7 +134,7 @@ export default function MobileEdgeNodePage() {
         const city = INDIAN_CITIES.find(c => c.name === selectedCity) || INDIAN_CITIES[0];
         fetchRealWeatherForCoords(city.lat, city.lon, city.name);
       },
-      { enableHighAccuracy: true, timeout: 6000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
     );
   }, [fetchRealWeatherForCoords, selectedCity]);
 
