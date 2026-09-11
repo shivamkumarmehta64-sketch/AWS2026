@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, Clock, Globe, Eye, BookOpen, Layers, Server, FileText, Smartphone, Menu, X, ExternalLink, Home, Activity, FileCheck } from 'lucide-react';
+import { Shield, ShieldCheck, Clock, Globe, Eye, BookOpen, Layers, Server, FileText, Smartphone, Menu, X, ExternalLink, Home, Activity, FileCheck } from 'lucide-react';
 import { ActiveModalType } from './GovInfoModals';
 
 interface GovHeaderProps {
@@ -289,6 +289,13 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
               <FileCheck className="w-3.5 h-3.5" />
               <span>{language === 'hi' ? 'तकनीकी ऑडिट डोजियर' : 'Technical Audit Dossier'}</span>
             </Link>
+            <Link
+              href="/#use-cases"
+              className="px-3 py-1 rounded transition-colors flex items-center gap-1.5 text-xs text-amber-300 hover:text-white hover:bg-amber-400/20 border border-amber-400/40 font-bold ml-1"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+              <span>{language === 'hi' ? 'SIH उपयोग परिदृश्य' : 'SIH Use Cases Studio'}</span>
+            </Link>
           </div>
 
           <div className="hidden lg:flex items-center gap-2 text-[11px] font-mono text-amber-300/90 pl-3">
@@ -342,6 +349,14 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
             >
               <FileCheck className="w-3.5 h-3.5 text-purple-500" />
               <span>Audit Dossier</span>
+            </Link>
+            <Link
+              href="/#use-cases"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="col-span-2 p-2.5 rounded flex items-center justify-center gap-2 border bg-amber-50 text-amber-900 border-amber-300 font-bold"
+            >
+              <ShieldCheck className="w-4 h-4 text-amber-700" />
+              <span>SIH Use Cases Interactive Studio (6 Scenarios)</span>
             </Link>
           </div>
 

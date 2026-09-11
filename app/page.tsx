@@ -20,7 +20,202 @@ import {
   Thermometer,
   Gauge,
   Compass,
+  Zap,
+  Terminal,
 } from 'lucide-react';
+
+interface OperationalUseCase {
+  id: string;
+  badge: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  station: string;
+  problemScenario: string;
+  rawInput: { temp: string; press: string; hum: string };
+  deltaInput: { deltaT: string; deltaP: string; deltaRH: string };
+  neighborContext: string;
+  aiClassification: string;
+  wmoFlag: string;
+  nwpStatus: 'APPROVED' | 'QUARANTINED' | 'CONDITIONAL';
+  confidence: string;
+  xai: {
+    tempWeight: number;
+    pressWeight: number;
+    humWeight: number;
+    dominant: string;
+    explanation: string;
+  };
+  imputed: { temp: string; press: string; hum: string; method: string } | null;
+  operationalAction: string;
+  linkUrl: string;
+  linkText: string;
+}
+
+const OPERATIONAL_USE_CASES: OperationalUseCase[] = [
+  {
+    id: 'benchmark_55c',
+    badge: 'SIH26073 Core Benchmark',
+    title: 'Sudden +55°C Hardware Sensor Spike',
+    subtitle: 'Isolated Single-Parameter Wire Open-Circuit Fault',
+    icon: '⚡',
+    station: 'AWS-DEL-04 (Safdarjung, New Delhi)',
+    problemScenario: 'An AWS suddenly jumps from 29.4°C to 55.0°C with 92% RH while 5 surrounding Delhi stations (Lodhi Road, Palam, Ridge, Aya Nagar) report normal conditions (~30.1°C).',
+    rawInput: { temp: '55.0°C', press: '1006.5 hPa', hum: '92.0%' },
+    deltaInput: { deltaT: '+25.6°C', deltaP: '0.0 hPa', deltaRH: '+24.0%' },
+    neighborContext: '5 nearest stations report ~30.1°C. Spatial Z-score = 8.4 confirms localized anomaly.',
+    aiClassification: 'SENSOR_SPIKE (Transducer Lead Open-Circuit)',
+    wmoFlag: 'WMO FLAG 4: CORRUPT_HARDWARE',
+    nwpStatus: 'QUARANTINED',
+    confidence: '96.0%',
+    xai: {
+      tempWeight: 86.5,
+      pressWeight: 0.0,
+      humWeight: 13.5,
+      dominant: 'TEMPERATURE_SPIKE',
+      explanation: 'Unphysical temperature rate-of-change (+25.6°C) without thermodynamic barometric coupling. Quarantined from GFS/WRF model assimilation.'
+    },
+    imputed: { temp: '29.6°C', press: '1006.5 hPa', hum: '54.3%', method: 'Hybrid WMA + Spatial Inverse Distance' },
+    operationalAction: 'Telemetry quarantined. Corrected value substituted for model assimilation. Auto-dispatched NABL work order #WO-DEL-2026.',
+    linkUrl: '/dashboard?station=AWS-DEL-04',
+    linkText: 'Simulate in Operations Console'
+  },
+  {
+    id: 'convective_storm',
+    badge: 'Storm vs. Fault Discrimination',
+    title: 'Severe Convective Squall (Kalbaisakhi)',
+    subtitle: 'Coupled Atmospheric Cold Pool vs False Alarm',
+    icon: '⛈️',
+    station: 'AWS-KOL-02 (Alipore, Kolkata)',
+    problemScenario: 'Violent pre-monsoon squall front causes rapid evaporative cooling (-4.3°C), microbarometric plunge (-3.1 hPa), and saturation surge (+24%). Traditional thresholds mistakenly reject this as a sensor fault!',
+    rawInput: { temp: '27.2°C', press: '1005.1 hPa', hum: '86.0%' },
+    deltaInput: { deltaT: '-4.3°C', deltaP: '-3.1 hPa', deltaRH: '+24.0%' },
+    neighborContext: 'Doppler Weather Radar (DWR Kolkata) confirms high-reflectivity convective squall line approaching at 65 km/h.',
+    aiClassification: 'GENUINE_CONVECTIVE_EVENT (Coupled Downdraft)',
+    wmoFlag: 'WMO FLAG 2: CONVECTIVE_STORM',
+    nwpStatus: 'APPROVED',
+    confidence: '98.0%',
+    xai: {
+      tempWeight: 42.0,
+      pressWeight: 35.0,
+      humWeight: 23.0,
+      dominant: 'CONVECTIVE_COLD_POOL_COUPLING',
+      explanation: 'Multivariate atmospheric invariant satisfied: Synchronous ΔT, ΔP plunge, and ΔRH surge match Zahumenský § 4.3 criteria.'
+    },
+    imputed: null,
+    operationalAction: 'VERIFIED GENUINE STORM. Gated to NWP assimilation. Broadcast regional Orange squall alert.',
+    linkUrl: '/dashboard?station=AWS-KOL-02',
+    linkText: 'Inspect Storm in Console'
+  },
+  {
+    id: 'frozen_adc',
+    badge: 'Hardware Deadlock',
+    title: 'Datalogger ADC Deadlock (Frozen Sensor)',
+    subtitle: 'Zero-Variance I2C Bus Hang Isolation',
+    icon: '🧊',
+    station: 'AWS-BLR-05 (HAL Airport, Bengaluru)',
+    problemScenario: 'Datalogger Analog-to-Digital Converter locks up on the communication bus; transmits identical 24.500°C across 6 consecutive cycles without natural microbaric jitter.',
+    rawInput: { temp: '24.5°C', press: '918.2 hPa', hum: '62.0%' },
+    deltaInput: { deltaT: '0.000°C', deltaP: '0.000 hPa', deltaRH: '0.000%' },
+    neighborContext: 'Atmospheric turbulence always exhibits micro-fluctuations (σ > 0.02). Zero variance indicates hardware freeze.',
+    aiClassification: 'FROZEN_VALUE (ADC Deadlock)',
+    wmoFlag: 'WMO FLAG 4: CORRUPT_HARDWARE',
+    nwpStatus: 'QUARANTINED',
+    confidence: '98.0%',
+    xai: {
+      tempWeight: 33.3,
+      pressWeight: 33.3,
+      humWeight: 33.4,
+      dominant: 'ZERO_VARIANCE_ADC_FREEZE',
+      explanation: 'Continuous zero-variance readings across 6 consecutive samples (Var = 0.000). Datalogger ADC deadlock identified.'
+    },
+    imputed: { temp: '24.5°C', press: '918.2 hPa', hum: '62.0%', method: 'Temporal Weighted Moving Average' },
+    operationalAction: 'Quarantined station. Watchdog remote reboot command transmitted via INSAT-3D uplink.',
+    linkUrl: '/dashboard?station=AWS-BLR-05',
+    linkText: 'View Diagnostics in Console'
+  },
+  {
+    id: 'sensor_drift',
+    badge: 'Predictive Maintenance',
+    title: 'Barometer Calibration Drift & Degradation',
+    subtitle: 'Monotonic Transducer Aging & Auto-Imputation',
+    icon: '📉',
+    station: 'AWS-MUM-01 (Colaba, Mumbai)',
+    problemScenario: 'Silicon capacitive pressure transducer drifts downwards by -2.40 hPa over a 24-hour window due to sensor diaphragm fatigue, while diurnal temperature cycle is normal.',
+    rawInput: { temp: '30.1°C', press: '1007.2 hPa', hum: '75.5%' },
+    deltaInput: { deltaT: '+0.1°C', deltaP: '-2.40 hPa (cumulative)', deltaRH: '+0.5%' },
+    neighborContext: 'Coastal reference stations (Santacruz, Alibag) remain steady at 1010.2 hPa. No synoptic low pressure system present.',
+    aiClassification: 'CALIBRATION_DRIFT (Transducer Fatigue)',
+    wmoFlag: 'WMO FLAG 3: SUSPECT_DRIFT',
+    nwpStatus: 'CONDITIONAL',
+    confidence: '88.0%',
+    xai: {
+      tempWeight: 8.0,
+      pressWeight: 85.0,
+      humWeight: 7.0,
+      dominant: 'BAROMETER_CALIBRATION_DRIFT',
+      explanation: 'Monotonic cumulative drift exceeding 1.8 hPa running mean divergence without regional gradient.'
+    },
+    imputed: { temp: '30.0°C', press: '1008.4 hPa', hum: '75.0%', method: 'Running Mean Autoregression' },
+    operationalAction: 'Conditional Gating: Substituted imputed pressure into NWP stream to prevent forecast degradation. Scheduled recalibration.',
+    linkUrl: '/dashboard?station=AWS-MUM-01',
+    linkText: 'Analyze Drift in Console'
+  },
+  {
+    id: 'spatial_knn',
+    badge: 'Spatial Network Consensus',
+    title: 'Spatial KNN Multi-Station Cross-Validation',
+    subtitle: 'Regional Network Consensus & Cohort Isolation',
+    icon: '🗺️',
+    station: 'AWS-DEL-04 vs. 5 Delhi NCR Stations',
+    problemScenario: 'An isolated station reports a sudden +4.5 hPa pressure jump. Inverse Distance Weighting across 5 nearest cohort stations rejects the reading as impossible micro-high.',
+    rawInput: { temp: '29.4°C', press: '1011.0 hPa', hum: '68.0%' },
+    deltaInput: { deltaT: '0.0°C', deltaP: '+4.5 hPa (Local)', deltaRH: '0.0%' },
+    neighborContext: '5 nearest stations within 25 km confirm flat regional gradient (|ΔP| < 0.3 hPa). Spatial Z-Score = 4.8.',
+    aiClassification: 'SPATIAL_ANOMALY (Isolated Micro-High Rejection)',
+    wmoFlag: 'WMO FLAG 4: CORRUPT_HARDWARE',
+    nwpStatus: 'QUARANTINED',
+    confidence: '97.5%',
+    xai: {
+      tempWeight: 5.0,
+      pressWeight: 90.0,
+      humWeight: 5.0,
+      dominant: 'SPATIAL_INCOHERENCE',
+      explanation: 'Spatial cross-validation against 5 neighboring AWS nodes reveals an unphysical pressure delta (Z-score > 4.5).'
+    },
+    imputed: { temp: '29.4°C', press: '1006.5 hPa', hum: '68.0%', method: 'Inverse Distance Weighting (IDW)' },
+    operationalAction: 'Isolated station quarantined. Substituted cohort consensus into GFS/NCMRWF assimilation.',
+    linkUrl: '/dashboard?tab=analytics',
+    linkText: 'Open 766 District GIS Grid'
+  },
+  {
+    id: 'mobile_node',
+    badge: 'Edge Sensor Innovation',
+    title: 'Mobile Smartphone as Calibrated AWS Node',
+    subtitle: 'Crowdsourced Field Sensor Grid with W3C Sensor API',
+    icon: '📱',
+    station: 'AWS-MOB-01 (Smartphone Edge Node)',
+    problemScenario: 'In remote or disaster-hit regions lacking $10,000 AWS towers, any standard smartphone functions as a live calibrated micro-observatory.',
+    rawInput: { temp: '29.4°C', press: '1006.5 hPa (Silicon)', hum: '68.0%' },
+    deltaInput: { deltaT: 'Physical Stream', deltaP: 'Hardware Barometer', deltaRH: 'Capacitive/API' },
+    neighborContext: 'Auto-provisioned in National GIS mesh grid with live GPS coordinates, battery voltage, and compass wind vane.',
+    aiClassification: 'MOBILE_GROUNDED_TELEMETRY (Physical Sensor)',
+    wmoFlag: 'WMO FLAG 1: VERIFIED_GOOD',
+    nwpStatus: 'APPROVED',
+    confidence: '94.0%',
+    xai: {
+      tempWeight: 33.3,
+      pressWeight: 33.3,
+      humWeight: 33.4,
+      dominant: 'PHYSICAL_HARDWARE_GROUNDING',
+      explanation: 'Verified physical silicon pressure readings (BMP280/Generic Sensor API) paired with cryptographic HMAC-SHA256 envelope.'
+    },
+    imputed: { temp: 'Live Ambient', press: 'Physical Silicon', hum: 'Live Stream', method: 'Direct Hardware Telemetry' },
+    operationalAction: 'Grounded to national GIS mesh. Cryptographic HMAC packet delivered to central QMS.',
+    linkUrl: '/mobile',
+    linkText: 'Open Mobile Sensor Node'
+  }
+];
 
 interface FeaturedObservatory {
   id: string;
@@ -54,9 +249,11 @@ export default function LandingPage() {
   const [activeInteractiveSim, setActiveInteractiveSim] = useState<'storm' | 'spike'>('storm');
   const [selectedObsId, setSelectedObsId] = useState<string>('AWS-DEL-04');
   const [activeQcStage, setActiveQcStage] = useState<number>(3);
+  const [activeUseCaseId, setActiveUseCaseId] = useState<string>('benchmark_55c');
   const [audioFeedback, setAudioFeedback] = useState<string | null>(null);
 
   const selectedObs = FEATURED_OBSERVATORIES.find((o) => o.id === selectedObsId) || FEATURED_OBSERVATORIES[0];
+  const activeUseCase = OPERATIONAL_USE_CASES.find((u) => u.id === activeUseCaseId) || OPERATIONAL_USE_CASES[0];
 
   const playLandingChime = (type: 'storm' | 'critical') => {
     if (typeof window === 'undefined') return;
@@ -240,6 +437,13 @@ export default function LandingPage() {
                   <span>Enter Operations Center</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
+                <a
+                  href="#use-cases"
+                  className="inline-flex items-center gap-2 px-4 py-3 text-sm font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg transition-all cursor-pointer shadow-xs"
+                >
+                  <Zap className="w-4 h-4 text-amber-700" />
+                  <span>Explore 6 Use Cases</span>
+                </a>
                 <Link
                   href="/mobile"
                   className="inline-flex items-center gap-2 px-4 py-3 text-sm font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all cursor-pointer"
@@ -407,6 +611,255 @@ export default function LandingPage() {
               <div className="text-3xl lg:text-4xl font-black font-mono text-purple-400">100%</div>
               <div className="text-xs uppercase tracking-wider font-bold text-slate-300">WMO-No. 8 Compliant</div>
               <div className="text-[11px] text-slate-400">Zahumenský (2004) Standard</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SIH-26073 Operational Use Cases Interactive Studio */}
+      <section id="use-cases" className="py-16 bg-slate-900 text-white border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 bg-amber-400/20 border border-amber-400/40 px-3 py-1 rounded-full text-xs font-bold text-amber-300">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <span>SIH-26073 Problem Statement Demonstration Suite</span>
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+              Operational Use Cases &amp; Algorithmic Verification
+            </h2>
+            <p className="text-sm sm:text-base text-slate-300">
+              Direct, reproducible verification of how Project JATAYU handles real-world meteorological hazards, severe convective storms, sensor open-circuits, and datalogger freezes strictly within Temperature, Pressure, and Humidity bounds.
+            </p>
+          </div>
+
+          {/* Use Case Tabs Selection */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+            {OPERATIONAL_USE_CASES.map((uc, idx) => {
+              const isSelected = activeUseCaseId === uc.id;
+              return (
+                <button
+                  key={uc.id}
+                  onClick={() => {
+                    setActiveUseCaseId(uc.id);
+                    if (uc.id === 'benchmark_55c') playLandingChime('critical');
+                    else if (uc.id === 'convective_storm') playLandingChime('storm');
+                  }}
+                  className={`p-3 rounded-xl text-left transition-all border cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                    isSelected
+                      ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-lg scale-102 font-bold ring-2 ring-amber-300'
+                      : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <span className="text-lg">{uc.icon}</span>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-black ${
+                      isSelected ? 'bg-slate-950 text-amber-400' : 'bg-slate-900 text-slate-400 border border-slate-700'
+                    }`}>
+                      UC-0{idx + 1}
+                    </span>
+                  </div>
+                  <div>
+                    <div className={`text-xs font-extrabold leading-snug line-clamp-2 ${isSelected ? 'text-slate-950' : 'text-white'}`}>
+                      {uc.title}
+                    </div>
+                    <div className={`text-[10px] mt-1 line-clamp-1 ${isSelected ? 'text-slate-800' : 'text-slate-400'}`}>
+                      {uc.badge}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Use Case Deep-Dive Studio Card */}
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+            {/* Header / Badges */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6 border-b border-slate-800">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-black uppercase bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                    {activeUseCase.badge}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">Target Station:</span>
+                  <span className="text-xs font-mono font-bold text-sky-400">{activeUseCase.station}</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                  <span>{activeUseCase.icon}</span>
+                  <span>{activeUseCase.title}</span>
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300">
+                  {activeUseCase.subtitle}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 text-right shrink-0">
+                  <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">NWP Gating Status</div>
+                  <div className={`text-sm sm:text-base font-mono font-black ${
+                    activeUseCase.nwpStatus === 'APPROVED' ? 'text-emerald-400' : 'text-rose-400'
+                  }`}>
+                    {activeUseCase.nwpStatus === 'APPROVED' ? '✓ GATED (PASS)' : '⛔ QUARANTINED (BLOCKED)'}
+                  </div>
+                  <div className="text-[10px] font-mono text-slate-400 mt-0.5">Confidence: {activeUseCase.confidence}</div>
+                </div>
+
+                <button
+                  onClick={() => playLandingChime(activeUseCase.nwpStatus === 'APPROVED' ? 'storm' : 'critical')}
+                  className="p-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-400/40 text-amber-300 transition-colors cursor-pointer flex flex-col items-center justify-center text-[10px] font-bold"
+                  title="Test Operational Acoustic Siren"
+                >
+                  <Volume2 className="w-5 h-5 text-amber-400 mb-1" />
+                  <span>Siren Audio</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Problem Scenario & Incident Narrative */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 sm:p-5 text-xs sm:text-sm text-slate-300 space-y-2">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <span>Incident Context &amp; Physical Conditions</span>
+              </div>
+              <p className="leading-relaxed">
+                {activeUseCase.problemScenario}
+              </p>
+              <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+                <span className="font-semibold text-slate-300">Spatial Peer Context: </span>
+                {activeUseCase.neighborContext}
+              </div>
+            </div>
+
+            {/* 3-Column Telemetry, XAI Attribution & Imputation Architecture */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Column 1: Ingested Telemetry */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
+                <div className="text-xs font-extrabold uppercase tracking-wider text-slate-300 pb-2 border-b border-slate-800 flex items-center justify-between">
+                  <span>1. Sensor Telemetry</span>
+                  <span className="text-[10px] font-mono text-slate-500">SIH 3-Param</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-slate-950 p-2 rounded border border-slate-800 text-xs">
+                    <span className="text-slate-400 font-medium">Air Temperature (T):</span>
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-white">{activeUseCase.rawInput.temp}</div>
+                      <div className="text-[10px] font-mono text-slate-400">Δ = {activeUseCase.deltaInput.deltaT}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between bg-slate-950 p-2 rounded border border-slate-800 text-xs">
+                    <span className="text-slate-400 font-medium">Pressure (P):</span>
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-white">{activeUseCase.rawInput.press}</div>
+                      <div className="text-[10px] font-mono text-slate-400">Δ = {activeUseCase.deltaInput.deltaP}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between bg-slate-950 p-2 rounded border border-slate-800 text-xs">
+                    <span className="text-slate-400 font-medium">Rel. Humidity (RH):</span>
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-white">{activeUseCase.rawInput.hum}</div>
+                      <div className="text-[10px] font-mono text-slate-400">Δ = {activeUseCase.deltaInput.deltaRH}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[11px] font-mono text-amber-300/90 pt-1">
+                  Classification: <span className="font-bold text-white">{activeUseCase.aiClassification}</span>
+                </div>
+              </div>
+
+              {/* Column 2: Explainable AI Attribution (SHAP-Equiv) */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
+                <div className="text-xs font-extrabold uppercase tracking-wider text-slate-300 pb-2 border-b border-slate-800 flex items-center justify-between">
+                  <span>2. Explainable AI (XAI)</span>
+                  <span className="text-[10px] font-mono text-purple-400 font-bold">SHAP Weights</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-slate-400">Temperature Attribution (W_T)</span>
+                      <span className="font-mono font-bold text-amber-400">{activeUseCase.xai.tempWeight}%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-amber-400 h-full rounded-full" style={{ width: `${activeUseCase.xai.tempWeight}%` }} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-slate-400">Pressure Attribution (W_P)</span>
+                      <span className="font-mono font-bold text-sky-400">{activeUseCase.xai.pressWeight}%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-sky-400 h-full rounded-full" style={{ width: `${activeUseCase.xai.pressWeight}%` }} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-slate-400">Humidity Attribution (W_RH)</span>
+                      <span className="font-mono font-bold text-emerald-400">{activeUseCase.xai.humWeight}%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${activeUseCase.xai.humWeight}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[11px] text-slate-300 pt-1 leading-relaxed bg-slate-950 p-2.5 rounded border border-slate-800">
+                  <span className="text-purple-400 font-bold">XAI Insight: </span>
+                  {activeUseCase.xai.explanation}
+                </div>
+              </div>
+
+              {/* Column 3: Imputation & Action */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-slate-300 pb-2 border-b border-slate-800 flex items-center justify-between">
+                    <span>3. Quality Imputation</span>
+                    <span className="text-[10px] font-mono text-emerald-400 font-bold">{activeUseCase.wmoFlag.split(':')[0]}</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs bg-slate-950 p-2.5 rounded border border-slate-800">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Imputed Temp:</span>
+                      <span className="font-mono font-bold text-emerald-300">{activeUseCase.imputed.temp}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Imputed Press:</span>
+                      <span className="font-mono font-bold text-emerald-300">{activeUseCase.imputed.press}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Imputed Hum:</span>
+                      <span className="font-mono font-bold text-emerald-300">{activeUseCase.imputed.hum}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-800">
+                      Method: <span className="text-slate-300 font-mono">{activeUseCase.imputed.method}</span>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-slate-300 leading-snug">
+                    <span className="text-amber-400 font-bold">Action Taken: </span>
+                    {activeUseCase.operationalAction}
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Link
+                    href={activeUseCase.linkUrl}
+                    className="w-full py-2 px-3 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md"
+                  >
+                    <span>{activeUseCase.linkText}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Run with Python CLI instructions */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 border-t border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-emerald-400" />
+                <span>Verify all 6 cases with Standalone Anomaly Engine:</span>
+                <code className="bg-slate-900 text-emerald-300 px-2 py-0.5 rounded font-mono text-[11px] border border-slate-800">
+                  npm run sih:demo
+                </code>
+              </div>
+              <div className="text-[11px] font-mono text-slate-500">
+                WMO Zahumenský (2004) &bull; Edge Latency: &lt;5ms &bull; Zero External Dependencies
+              </div>
             </div>
           </div>
         </div>
