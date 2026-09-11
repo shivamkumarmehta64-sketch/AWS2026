@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "AWS-SIH2026-FINAL/**",
+    ".agents/**",
   ]),
 ]);
 
