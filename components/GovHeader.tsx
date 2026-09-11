@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Shield, Clock, Globe, Eye, BookOpen, Layers, Server, FileText, Smartphone, Menu, X, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Shield, Clock, Globe, Eye, BookOpen, Layers, Server, FileText, Smartphone, Menu, X, ExternalLink, Home, Activity, FileCheck } from 'lucide-react';
 import { ActiveModalType } from './GovInfoModals';
 
 interface GovHeaderProps {
@@ -24,6 +26,7 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
   fontSizeLevel, onFontSizeChange, isHighContrast, onToggleContrast,
   language, onToggleLanguage, onOpenModal, onOpenDatasetReplay, onOpenMobileQR, isLiveApiMode = true,
 }) {
+  const pathname = usePathname();
   const [istTime, setIstTime] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -238,9 +241,110 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
         </div>
       </div>
 
+      {/* Sovereign National Command Portal Links Strip */}
+      <nav aria-label="Portal Navigation" className="bg-[#001733] border-b border-white/10 text-white">
+        <div className="max-w-[1750px] mx-auto px-4 lg:px-8 flex items-center justify-between overflow-x-auto scrollbar-none py-1.5 text-xs font-semibold">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Link
+              href="/"
+              className={`px-3 py-1 rounded transition-colors flex items-center gap-1.5 text-xs ${
+                pathname === '/'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-200 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span>{language === 'hi' ? 'मुख्य पृष्ठ' : 'Portal Overview'}</span>
+            </Link>
+            <Link
+              href="/dashboard"
+              className={`px-3 py-1 rounded transition-colors flex items-center gap-1.5 text-xs ${
+                pathname === '/dashboard'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-200 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>{language === 'hi' ? 'राष्ट्रीय संचालन केंद्र' : 'National Operations Console'}</span>
+            </Link>
+            <Link
+              href="/mobile"
+              className={`px-3 py-1 rounded transition-colors flex items-center gap-1.5 text-xs ${
+                pathname === '/mobile'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-200 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>{language === 'hi' ? 'मोबाइल वेधशाला (PWA)' : 'Mobile Sensor Node'}</span>
+            </Link>
+            <Link
+              href="/audit-report"
+              className={`px-3 py-1 rounded transition-colors flex items-center gap-1.5 text-xs ${
+                pathname === '/audit-report'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-200 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <FileCheck className="w-3.5 h-3.5" />
+              <span>{language === 'hi' ? 'तकनीकी ऑडिट डोजियर' : 'Technical Audit Dossier'}</span>
+            </Link>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-2 text-[11px] font-mono text-amber-300/90 pl-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>NWP Gating Engine: WMO-548 Active</span>
+          </div>
+        </div>
+      </nav>
+
       {/* Mobile Drawer Dropdown */}
       {isMobileMenuOpen && (
         <div className="xl:hidden bg-slate-50 border-b border-slate-200 p-4 space-y-3 animate-fadeIn">
+          {/* Primary Mobile Navigation Links */}
+          <div className="grid grid-cols-2 gap-2 text-xs font-bold pb-2 border-b border-slate-200">
+            <Link
+              href="/"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`p-2.5 rounded flex items-center gap-2 border ${
+                pathname === '/' ? 'bg-[#002147] text-white border-[#002147]' : 'bg-white text-slate-800 border-slate-300'
+              }`}
+            >
+              <Home className="w-3.5 h-3.5 text-amber-500" />
+              <span>Overview</span>
+            </Link>
+            <Link
+              href="/dashboard"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`p-2.5 rounded flex items-center gap-2 border ${
+                pathname === '/dashboard' ? 'bg-[#002147] text-white border-[#002147]' : 'bg-white text-slate-800 border-slate-300'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Ops Console</span>
+            </Link>
+            <Link
+              href="/mobile"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`p-2.5 rounded flex items-center gap-2 border ${
+                pathname === '/mobile' ? 'bg-[#002147] text-white border-[#002147]' : 'bg-white text-slate-800 border-slate-300'
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5 text-sky-500" />
+              <span>Mobile Node</span>
+            </Link>
+            <Link
+              href="/audit-report"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`p-2.5 rounded flex items-center gap-2 border ${
+                pathname === '/audit-report' ? 'bg-[#002147] text-white border-[#002147]' : 'bg-white text-slate-800 border-slate-300'
+              }`}
+            >
+              <FileCheck className="w-3.5 h-3.5 text-purple-500" />
+              <span>Audit Dossier</span>
+            </Link>
+          </div>
+
           <div className="grid grid-cols-2 gap-2 text-xs">
             {([
               { modal: 'architecture' as const, icon: <Server className="w-3.5 h-3.5 text-sky-700" />, label: 'Architecture' },
@@ -251,7 +355,7 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
               <button
                 key={item.modal}
                 onClick={() => { onOpenModal(item.modal); setIsMobileMenuOpen(false); }}
-                className="flex items-center gap-2 p-2.5 bg-white rounded border border-slate-300 text-slate-800 font-medium hover:bg-slate-100"
+                className="flex items-center gap-2 p-2.5 bg-white rounded border border-slate-300 text-slate-800 font-medium hover:bg-slate-100 cursor-pointer"
               >
                 {item.icon}
                 <span>{item.label}</span>
@@ -263,7 +367,7 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
             {onOpenDatasetReplay && (
               <button
                 onClick={() => { onOpenDatasetReplay(); setIsMobileMenuOpen(false); }}
-                className="flex-1 py-2 bg-white border border-slate-300 rounded text-xs font-semibold text-slate-800 flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 bg-white border border-slate-300 rounded text-xs font-semibold text-slate-800 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5 text-amber-600" />
                 <span>Replay Data</span>
@@ -272,7 +376,7 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
             {onOpenMobileQR && (
               <button
                 onClick={() => { onOpenMobileQR(); setIsMobileMenuOpen(false); }}
-                className="flex-1 py-2 bg-emerald-600 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 bg-emerald-600 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Smartphone className="w-3.5 h-3.5 text-white" />
                 <span>Phone QR</span>
