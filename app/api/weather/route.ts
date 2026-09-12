@@ -28,8 +28,12 @@ export async function GET(request: NextRequest) {
   // Helper 0: Official IMD API Gateway (api.imd.gov.in)
   const fetchIMD = async (): Promise<ProviderObservation | null> => {
     const imdApiKey = process.env.IMD_API_KEY;
+    // api.imd.gov.in returns 401 Unauthorized without official MoES/IMD credentials.
+    // Immediately bypass if key is not configured to prevent unnecessary 3.5s timeout / 401 overhead.
+    if (!imdApiKey) return null;
+
     try {
-      const url = `https://api.imd.gov.in/api/v1/cityforecast${imdApiKey ? `?api_key=${encodeURIComponent(imdApiKey)}` : ''}`;
+      const url = `https://api.imd.gov.in/api/v1/cityforecast?api_key=${encodeURIComponent(imdApiKey)}`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
       const headers: Record<string, string> = {

@@ -45,10 +45,10 @@ const STATUS_MAP: Record<string, { cls: string; label: string }> = {
 
 // Fallback packet factory
 const makeFallback = (s: IMDStationProfile): TelemetryPacket => ({
-  packetId: `PKT-${s.stationId.replace('AWS-', '')}-104821`, stationId: s.stationId,
+  packetId: `PKT-${s?.stationId?.replace('AWS-', '') || 'UNK'}-104821`, stationId: s?.stationId || 'UNKNOWN',
   timestamp: 1773220800000, timeIST: '20:30:10',
-  raw: { temperature: s.baseline.tempMean, pressure: s.baseline.pressureMean, humidity: s.baseline.humidityMean, windSpeedKph: s.baseline.windMean ?? 15, windDirectionDeg: s.baseline.windDirMean ?? 225, rainfallMm10min: 0 },
-  imputed: { temperature: s.baseline.tempMean, pressure: s.baseline.pressureMean, humidity: s.baseline.humidityMean, windSpeedKph: s.baseline.windMean ?? 15, windDirectionDeg: s.baseline.windDirMean ?? 225, rainfallMm10min: 0, wasCorrected: false },
+  raw: { temperature: s?.baseline?.tempMean ?? 25, pressure: s?.baseline?.pressureMean ?? 1010, humidity: s?.baseline?.humidityMean ?? 60, windSpeedKph: s?.baseline?.windMean ?? 15, windDirectionDeg: s?.baseline?.windDirMean ?? 225, rainfallMm10min: 0 },
+  imputed: { temperature: s?.baseline?.tempMean ?? 25, pressure: s?.baseline?.pressureMean ?? 1010, humidity: s?.baseline?.humidityMean ?? 60, windSpeedKph: s?.baseline?.windMean ?? 15, windDirectionDeg: s?.baseline?.windDirMean ?? 225, rainfallMm10min: 0, wasCorrected: false },
   ratesOfChange: { tempRoC: 0.1, pressRoC: -0.2, humRoC: 0.4, windRoC: 0 },
   classification: 'NOMINAL_OPERATION', wmoFlag: 'FLAG_1_VERIFIED_GOOD', alertLevel: 'LEVEL_0_NOMINAL', faultProbability: 0.02,
   xaiAttribution: { tempWeight: 33.3, pressWeight: 33.3, humWeight: 33.4, primaryParameter: 'None', diagnosticNote: 'Nominal baseline' },
@@ -112,9 +112,9 @@ function generateHistoricalTimeline(s: IMDStationProfile, timeframe: '1H' | '6H'
       const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
       const h = d.getHours();
       const solarPhase = ((h - 9 + 24) % 24) * (Math.PI / 12);
-      let temp = Math.round((s.baseline.tempMean + 4.2 * Math.sin(solarPhase) + 0.1 * (i % 3)) * 10) / 10;
-      let pressure = Math.round((s.baseline.pressureMean + 1.1 * Math.cos(h * Math.PI / 6)) * 10) / 10;
-      let humidity = Math.round(Math.max(28, Math.min(95, s.baseline.humidityMean - 14 * Math.sin(solarPhase))) * 10) / 10;
+      let temp = Math.round(((s?.baseline?.tempMean ?? 25) + 4.2 * Math.sin(solarPhase) + 0.1 * (i % 3)) * 10) / 10;
+      let pressure = Math.round(((s?.baseline?.pressureMean ?? 1010) + 1.1 * Math.cos(h * Math.PI / 6)) * 10) / 10;
+      let humidity = Math.round(Math.max(28, Math.min(95, (s?.baseline?.humidityMean ?? 60) - 14 * Math.sin(solarPhase))) * 10) / 10;
 
       const isConvective = i === 6; // Frontal squall 2 hours ago
       if (isConvective) {
@@ -137,9 +137,9 @@ function generateHistoricalTimeline(s: IMDStationProfile, timeframe: '1H' | '6H'
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 5 * 60 * 1000);
       const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const temp = Math.round((s.baseline.tempMean + Math.sin(i / 2) * 0.3) * 10) / 10;
-      const pressure = Math.round((s.baseline.pressureMean + Math.cos(i / 3) * 0.35) * 10) / 10;
-      const humidity = Math.round((s.baseline.humidityMean + Math.sin(i) * 0.7) * 10) / 10;
+      const temp = Math.round(((s?.baseline?.tempMean ?? 25) + Math.sin(i / 2) * 0.3) * 10) / 10;
+      const pressure = Math.round(((s?.baseline?.pressureMean ?? 1010) + Math.cos(i / 3) * 0.35) * 10) / 10;
+      const humidity = Math.round(((s?.baseline?.humidityMean ?? 60) + Math.sin(i) * 0.7) * 10) / 10;
 
       const isFault = i === 3; // PT100 anomaly spike marker 15 minutes ago
       points.push({
@@ -453,7 +453,7 @@ export const GovObservationConsole = React.memo<Props>(function GovObservationCo
               </span>
             </div>
             <div className="text-[11px] text-slate-600 mt-0.5 flex flex-wrap items-center gap-2">
-              <span>Carrier: <strong>{s.sensorMetadata.telemetryUplink.split('/')[0]}</strong></span>
+              <span>Carrier: <strong>{s?.sensorMetadata?.telemetryUplink?.split('/')[0] || 'Unknown'}</strong></span>
               <span>•</span>
               <span className="flex items-center gap-1">
                 <HardDrive className="w-3 h-3 text-slate-500" />

@@ -11,6 +11,7 @@ interface Props {
   stationName: string;
   state: string;
   language: 'hi' | 'en';
+  isInline?: boolean;
 }
 
 export const GovEmergencyAlertModal: React.FC<Props> = ({
@@ -20,6 +21,7 @@ export const GovEmergencyAlertModal: React.FC<Props> = ({
   stationName,
   state,
   language,
+  isInline = false,
 }) => {
   const [alertType, setAlertType] = useState<'STORM' | 'FAULT'>('STORM');
 
@@ -48,8 +50,8 @@ export const GovEmergencyAlertModal: React.FC<Props> = ({
   const cap: EmergencyCapAlert = generateCapAlert(targetPkt, stationName, state);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white border-2 border-[#002147] rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+    <div className={isInline ? "w-full h-full flex flex-col items-center justify-center p-4 animate-fadeIn" : "fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn"}>
+      <div className={`bg-white border-2 border-[#002147] rounded-xl shadow-2xl w-full overflow-hidden flex flex-col ${isInline ? 'max-h-full max-w-full h-full' : 'max-w-2xl max-h-[90vh]'}`}>
         {/* Header */}
         <div className="bg-[#002147] text-white px-5 py-3.5 flex items-center justify-between border-b-2 border-amber-400">
           <div className="flex items-center gap-2.5">
@@ -65,12 +67,14 @@ export const GovEmergencyAlertModal: React.FC<Props> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {!isInline && (
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Modal Body */}
@@ -176,14 +180,16 @@ export const GovEmergencyAlertModal: React.FC<Props> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-100 border-t border-slate-200 px-5 py-2.5 flex items-center justify-between text-[11px] text-slate-600">
+        <div className="bg-slate-100 border-t border-slate-200 px-5 py-2.5 flex items-center justify-between text-[11px] text-slate-600 shrink-0">
           <span>OASIS CAP v1.2 / ITU-T X.1303 Integrated</span>
-          <button
-            onClick={onClose}
-            className="bg-[#002147] hover:bg-slate-800 text-white px-4 py-1 rounded font-bold transition-colors cursor-pointer"
-          >
-            Done
-          </button>
+          {!isInline && (
+            <button
+              onClick={onClose}
+              className="bg-[#002147] hover:bg-slate-800 text-white px-4 py-1 rounded font-bold transition-colors cursor-pointer"
+            >
+              Done
+            </button>
+          )}
         </div>
       </div>
     </div>
