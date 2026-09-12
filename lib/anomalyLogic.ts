@@ -22,6 +22,7 @@ export interface TelemetryPacket {
   mlPrediction: { mlClassification: string; mlConfidence: number; agreesWithRules: boolean };
   operationalAction: string;
   ticketId: string | null;
+  orographicQnhPressure?: number | null;
   spatialValidation?: { nearestStations: string[]; verdict: 'SINGLE_NODE_FAULT' | 'REGIONAL_WEATHER' | 'INSUFFICIENT_DATA' };
   securitySeal: {
     hmacSha256: string;
@@ -70,6 +71,22 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * WMO / ICAO Standard Barometric Reduction Formula (Orographic Normalization)
+ * Computes Mean Sea-Level Pressure (QNH) from Station Surface Pressure (QFE), Elevation (h), and Ambient Temp (T).
+ * Eliminates false pressure anomaly alarms in high-altitude/mountainous terrains (e.g. Bengaluru 920m, Pune 560m).
+ */
+export function calculateQnhPressure(stationPressureHpa: number | null, elevationM: number, tempC: number | null): number | null {
+  if (stationPressureHpa === null) return null;
+  if (elevationM <= 0) return stationPressureHpa;
+  const t = tempC ?? 15.0; // Standard Atmosphere ISA base temperature
+  const lapseRate = 0.0065; // Standard tropospheric lapse rate (6.5 K/km)
+  const factor = 1 - (lapseRate * elevationM) / (t + lapseRate * elevationM + 273.15);
+  if (factor <= 0) return stationPressureHpa;
+  const pMsl = stationPressureHpa * Math.pow(factor, -5.257);
+  return Math.round(pMsl * 10) / 10;
 }
 
 /** Shared work order factory — eliminates duplicate creation in page.tsx */
@@ -261,8 +278,14 @@ export class NICWMOAnomalyEngine {
     const recent6 = [...buf.slice(-5), { raw: { temperature: rawT } }].map(p => p.raw.temperature);
     const isFrozen = rawT !== null && recent6.length >= 6 && recent6.every(v => v !== null && Math.abs(v - (rawT as number)) < 0.00001);
 
-    // Temp spike: >50°C or >3.2°C jump
-    const isSpike = rawT !== null && (rawT > 50 || Math.abs(tD) > 3.2);
+    // Convective storm discrimination (Coupled Microburst / Kalbaisakhi signature)
+    const isPD = pD <= -1.5 || rPD <= -2.5 || (rawP !== null && rawP < 1004 && (pD < -0.6 || rPD < -1.5));
+    const isHS = hD >= 8 || rHD >= 15 || (rawH !== null && rawH >= 88 && (hD > 2 || rHD > 5));
+    const isC = tD <= -0.5 || rTD <= -1.5 || (rawT !== null && rawT <= 32);
+    const isStorm = !isFrozen && rawP !== null && rawH !== null && rawT !== null && isPD && isHS && isC;
+
+    // Temp spike: unphysical reading (>50°C or |ΔT| > 3.2°C) without coupled barometric plunge
+    const isSpike = !isStorm && rawT !== null && (rawT > 50 || Math.abs(tD) > 3.2);
 
     // Wind spike: >100 km/h sudden jump — stuck wind vane (zero variance)
     const recentW6 = [...buf.slice(-5), { raw: { windSpeedKph: rawW } }].map(p => p.raw.windSpeedKph);
@@ -274,12 +297,6 @@ export class NICWMOAnomalyEngine {
     // Drift
     const driftAmt = this.driftOffset.get(stationId) || 0;
     const isDrift = Math.abs(driftAmt) > 2.0;
-
-    // Convective storm discrimination
-    const isPD = pD <= -1.5 || rPD <= -2.5 || (rawP !== null && rawP < 1004 && (pD < -0.6 || rPD < -1.5));
-    const isHS = hD >= 8 || rHD >= 15 || (rawH !== null && rawH >= 88 && (hD > 2 || rHD > 5));
-    const isC = tD <= -0.5 || rTD <= -1.5 || (rawT !== null && rawT <= 32);
-    const isStorm = !isSpike && !isFrozen && rawP !== null && rawH !== null && rawT !== null && isPD && isHS && isC;
 
     const isLoss = rawT === null || rawP === null || rawH === null;
 
@@ -388,6 +405,8 @@ export class NICWMOAnomalyEngine {
       console.warn(`[ML Disagreement] Station ${stationId}: Rule=${cls}, ML=${mappedMlCls}`);
     }
 
+    const qnhPressure = calculateQnhPressure(rawP, station.elevationM, rawT);
+
     const pkt: TelemetryPacket = {
       packetId: `PKT-${stationId.replace('AWS-', '')}-${timestamp.toString().slice(-6)}`,
       stationId, timestamp, timeIST: formatIST(timestamp),
@@ -398,6 +417,7 @@ export class NICWMOAnomalyEngine {
       xaiAttribution: { tempWeight: Math.round(tW * 10) / 10, pressWeight: Math.round(pW * 10) / 10, humWeight: Math.round(hW * 10) / 10, primaryParameter: param, diagnosticNote: diag },
       mlPrediction: { mlClassification: mlPred.classification, mlConfidence: mlPred.confidence, agreesWithRules },
       operationalAction: action, ticketId: tid,
+      orographicQnhPressure: qnhPressure,
       securitySeal: {
         hmacSha256: hmacSig,
         antiReplayNonce: timestamp % 999999,
@@ -411,6 +431,27 @@ export class NICWMOAnomalyEngine {
     if (buf.length > 40) buf.shift();
     this.stationBuffers.set(stationId, buf);
     return pkt;
+  }
+
+  // ─── Bidirectional Field Calibration Loopback (OTA) ───
+  applyFieldCalibration(stationId: string, pressureOffset: number, tempOffset = 0): { success: boolean; newDriftOffset: number; message: string } {
+    const current = this.driftOffset.get(stationId) || 0;
+    const updated = Math.round((current + pressureOffset) * 100) / 100;
+    this.driftOffset.set(stationId, updated);
+    // Remove active drift bench injection if present
+    const inj = this.activeInjections.get(stationId);
+    if (inj && inj.type === 'CALIBRATION_DRIFT') {
+      this.activeInjections.delete(stationId);
+    }
+    return {
+      success: true,
+      newDriftOffset: updated,
+      message: `Zero-point calibration offset of ${pressureOffset > 0 ? '+' : ''}${pressureOffset} hPa applied to station ${stationId} register.`,
+    };
+  }
+
+  getStationDrift(id: string): number {
+    return this.driftOffset.get(id) || 0;
   }
 
   // ─── Bench Test Triggers ───

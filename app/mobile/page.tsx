@@ -343,6 +343,9 @@ export default function MobileEdgeNodePage() {
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
+          <div className="h-8 w-6 shrink-0 flex items-center justify-center bg-white/10 p-0.5 rounded border border-amber-400/50 shadow-sm" title="State Emblem of India">
+            <Image src="/emblem-of-india.svg" alt="Emblem of India" width={24} height={32} className="h-full w-auto object-contain brightness-200" priority />
+          </div>
           <div className="w-8 h-8 rounded-full overflow-hidden border border-amber-400/80 bg-white flex items-center justify-center shrink-0">
             <Image src="/jatayu-seal.jpg" alt="JATAYU Emblem" width={32} height={32} className="w-full h-full object-cover" />
           </div>

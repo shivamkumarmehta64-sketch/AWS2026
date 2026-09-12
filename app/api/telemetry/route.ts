@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-export const runtime = 'edge';
 
 import { nicWmoEngineInstance, TelemetryPacket } from '@/lib/anomalyLogic';
 import { IMD_AWS_STATIONS, getStationProfile } from '@/lib/stationData';
 import { fetchLiveStationObservation } from '@/lib/liveWeatherService';
+import { persistTelemetryToEdge, resolveWorkOrderOnEdge } from '@/lib/d1Adapter';
 
 // In-memory sliding window rate limiter: max 240 requests per minute per station/IP
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -107,6 +107,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ─── Bidirectional Field Calibration Loopback (OTA) ───
+    if (body.action === 'CALIBRATE_OFFSET') {
+      const pOffset = typeof body.pressureOffset === 'number' ? body.pressureOffset : 0;
+      const tOffset = typeof body.temperatureOffset === 'number' ? body.temperatureOffset : 0;
+      const techId = typeof body.technicianId === 'string' ? body.technicianId : 'FIELD-TECH-IMD';
+      const ticketId = typeof body.ticketId === 'string' ? body.ticketId : null;
+
+      const calib = nicWmoEngineInstance.applyFieldCalibration(stationId, pOffset, tOffset);
+      if (ticketId) {
+        await resolveWorkOrderOnEdge(ticketId, `Calibrated by ${techId}: Offset ${pOffset} hPa committed.`);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'CALIBRATE_OFFSET',
+        stationId,
+        ticketId,
+        technicianId: techId,
+        newDriftOffset: calib.newDriftOffset,
+        message: calib.message,
+        compliance: 'WMO-No. 8 Calibration Traceability Standard',
+        timestamp: Date.now(),
+      });
+    }
+
     // Parse & sanitize numeric values (allowing null for dropped packets)
     const parseParam = (val: unknown, min: number, max: number): number | null => {
       if (val === null || val === undefined || val === '') return null;
@@ -164,6 +189,9 @@ export async function POST(request: NextRequest) {
     if (liveIngestedBuffer.length > 50) {
       liveIngestedBuffer.pop();
     }
+
+    // Zero-cost asynchronous persistence to Cloudflare D1 / edge RAM
+    persistTelemetryToEdge(evaluatedPacket).catch(() => {});
 
     const latencyMs = Math.round((performance.now() - startTime) * 100) / 100;
 

@@ -128,6 +128,11 @@ export const GovHeader = React.memo<GovHeaderProps>(function GovHeader({
         <div className="max-w-[1750px] mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-4">
           {/* Identity & Seals */}
           <div className="flex items-center gap-3">
+            {/* Official State Emblem of India */}
+            <div className="h-12 w-9 shrink-0 flex items-center justify-center bg-white/10 p-1 rounded border border-amber-400/50 shadow-sm" title="State Emblem of India (सत्यमेव जयते)">
+              <img src="/emblem-of-india.svg" alt="State Emblem of India" className="h-full w-auto object-contain filter drop-shadow brightness-0 invert" />
+            </div>
+            {/* Project JATAYU Seal */}
             <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-400 shadow-md shrink-0 bg-white flex items-center justify-center">
               <Image src="/jatayu-seal.jpg" alt="Project JATAYU Emblem" width={48} height={48} className="w-full h-full object-cover" />
             </div>

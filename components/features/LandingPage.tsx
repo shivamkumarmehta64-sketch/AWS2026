@@ -156,8 +156,8 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' }}
             className="flex items-center justify-center gap-5 mb-8"
           >
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-white border border-slate-200 flex items-center justify-center rounded-full shadow-md">
-              <Image src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" alt="Emblem of India" width={48} height={48} className="h-10 md:h-12 w-auto" style={{ width: 'auto', height: '100%' }} unoptimized />
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-white border border-slate-200 flex items-center justify-center rounded-full shadow-md p-2">
+              <img src="/emblem-of-india.svg" alt="Emblem of India" className="h-10 md:h-12 w-auto object-contain" />
             </div>
             <div className="w-1 h-10 bg-gradient-to-b from-[#FF9933] via-white to-[#138808] rounded-full" />
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden border-[3px] border-amber-400 shadow-lg bg-slate-950 flex items-center justify-center">

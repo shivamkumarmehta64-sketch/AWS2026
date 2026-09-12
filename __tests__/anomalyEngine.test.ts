@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { NICWMOAnomalyEngine } from '../lib/anomalyLogic';
+import { NICWMOAnomalyEngine, calculateQnhPressure } from '../lib/anomalyLogic';
+import { persistTelemetryToEdge, resolveWorkOrderOnEdge } from '../lib/d1Adapter';
 
 describe('NICWMOAnomalyEngine', () => {
   let engine: NICWMOAnomalyEngine;
@@ -104,5 +105,31 @@ describe('NICWMOAnomalyEngine', () => {
     const pkt = engine.generatePacket(stationId);
     expect(pkt.securitySeal).toBeDefined();
     expect(pkt.securitySeal.hmacSha256).toMatch(/^0x[0-9a-f]+$/);
+  });
+
+  it('calculates orographic QNH pressure reduction correctly for elevated stations', () => {
+    // HAL Bengaluru: Elevation ~920m, station pressure ~910 hPa at 25°C
+    const qnh = calculateQnhPressure(910.0, 920, 25.0);
+    expect(qnh).toBeGreaterThan(910.0);
+    expect(qnh).toBeCloseTo(1010.5, 0); // Sea-level equivalent should be around standard ~1010 hPa
+  });
+
+  it('applies bidirectional field calibration offset to eliminate sensor drift', () => {
+    engine.triggerBarometerDrift(stationId);
+    for (let i = 0; i < 6; i++) engine.generatePacket(stationId);
+
+    // Apply technician offset of +2.7 hPa
+    const calib = engine.applyFieldCalibration(stationId, 2.7);
+    expect(calib.success).toBe(true);
+    expect(engine.getStationDrift(stationId)).toBeGreaterThan(-1.0);
+  });
+
+  it('persists telemetry and resolves work orders using D1 edge adapter fallback', async () => {
+    const pkt = engine.generatePacket(stationId);
+    const persistResult = await persistTelemetryToEdge(pkt);
+    expect(persistResult.persisted).toBe(true);
+
+    const resolveResult = await resolveWorkOrderOnEdge('WO-TEST-001', 'Technician replaced PT100 probe');
+    expect(typeof resolveResult).toBe('boolean');
   });
 });
