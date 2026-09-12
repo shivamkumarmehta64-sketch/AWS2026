@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+export const runtime = 'edge';
+
 // Known malicious user agents and automated scrapers
 const BLOCKED_USER_AGENTS = [
   'python-requests',
