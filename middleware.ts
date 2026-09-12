@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export const runtime = 'edge';
-
 // Known malicious user agents and automated scrapers
 const BLOCKED_USER_AGENTS = [
   'python-requests',
@@ -22,10 +20,11 @@ const BLOCKED_USER_AGENTS = [
 const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'https://jatayu-qms.vercel.app',
+  'https://jatayu.pages.dev',
   'https://jatayu.gov.in', // Mock government domain
 ];
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const userAgent = request.headers.get('user-agent')?.toLowerCase() || '';
   const pathname = request.nextUrl.pathname;
 
@@ -80,7 +79,7 @@ export function proxy(request: NextRequest) {
 
   // Attach standard Edge headers for tracking/debugging
   response.headers.set('X-JATAYU-Edge-Secured', 'true');
-  const region = request.headers.get('x-vercel-ip-city') || 'global';
+  const region = request.headers.get('cf-ipcity') || request.headers.get('x-vercel-ip-city') || 'global';
   response.headers.set('X-Edge-Region', region);
 
   return response;
